@@ -1,0 +1,192 @@
+# Configuration GitLab CI pour OptiVolt
+
+stages:
+  - build
+  - deploy
+  - test
+  - metrics
+  - report
+
+variables:
+  DOTNET_VERSION: "8.0"
+  TEST_DURATION: "30"
+
+# Template pour les jobs SSH
+.ssh_template: &ssh_template
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+
+# Build du CLI
+build:cli:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - cd src/OptiVoltCLI/OptiVoltCLI
+    - dotnet restore
+    - dotnet build --configuration Release
+    - dotnet publish --configuration Release --output ../../../publish
+  artifacts:
+    paths:
+      - publish/
+      - scripts/
+      - config/
+    expire_in: 1 hour
+  tags:
+    - docker
+
+# Déploiement Docker
+deploy:docker:
+  stage: deploy
+  image: ubuntu:22.04
+  <<: *ssh_template
+  script:
+    - cd publish
+    - dotnet OptiVoltCLI.dll deploy --environment docker
+  dependencies:
+    - build:cli
+  only:
+    - main
+    - develop
+  tags:
+    - docker
+
+# Déploiement MicroVM
+deploy:microvm:
+  stage: deploy
+  image: ubuntu:22.04
+  <<: *ssh_template
+  script:
+    - cd publish
+    - dotnet OptiVoltCLI.dll deploy --environment microvm
+  dependencies:
+    - build:cli
+  only:
+    - main
+  when: manual
+  tags:
+    - docker
+
+# Déploiement Unikernel
+deploy:unikernel:
+  stage: deploy
+  image: ubuntu:22.04
+  <<: *ssh_template
+  script:
+    - cd publish
+    - dotnet OptiVoltCLI.dll deploy --environment unikernel
+  dependencies:
+    - build:cli
+  only:
+    - main
+  when: manual
+  tags:
+    - docker
+
+# Tests CPU
+test:cpu:
+  stage: test
+  image: ubuntu:22.04
+  <<: *ssh_template
+  script:
+    - cd publish
+    - dotnet OptiVoltCLI.dll test --environment docker --type cpu
+  dependencies:
+    - build:cli
+    - deploy:docker
+  artifacts:
+    paths:
+      - results/
+    expire_in: 1 week
+  tags:
+    - docker
+
+# Tests API
+test:api:
+  stage: test
+  image: ubuntu:22.04
+  <<: *ssh_template
+  script:
+    - cd publish
+    - dotnet OptiVoltCLI.dll test --environment docker --type api
+  dependencies:
+    - build:cli
+    - deploy:docker
+  artifacts:
+    paths:
+      - results/
+    expire_in: 1 week
+  tags:
+    - docker
+
+# Tests Base de Données
+test:db:
+  stage: test
+  image: ubuntu:22.04
+  <<: *ssh_template
+  script:
+    - cd publish
+    - dotnet OptiVoltCLI.dll test --environment docker --type db
+  dependencies:
+    - build:cli
+    - deploy:docker
+  artifacts:
+    paths:
+      - results/
+    expire_in: 1 week
+  tags:
+    - docker
+
+# Collecte des métriques
+metrics:collect:
+  stage: metrics
+  image: ubuntu:22.04
+  <<: *ssh_template
+  script:
+    - apt-get install -y -qq jq
+    - cd publish
+    - dotnet OptiVoltCLI.dll metrics --environment docker
+    - dotnet OptiVoltCLI.dll metrics --environment microvm || true
+    - dotnet OptiVoltCLI.dll metrics --environment unikernel || true
+  dependencies:
+    - build:cli
+    - test:cpu
+    - test:api
+    - test:db
+  artifacts:
+    paths:
+      - results/
+    reports:
+      dotenv: results/metrics.env
+    expire_in: 1 month
+  tags:
+    - docker
+
+# Génération du rapport
+report:generate:
+  stage: report
+  image: ubuntu:22.04
+  script:
+    - apt-get update -qq
+    - apt-get install -y -qq jq python3 python3-pip
+    - pip3 install matplotlib pandas
+    - cd publish
+    - dotnet OptiVoltCLI.dll report
+    - python3 ../scripts/generate_dashboard.py
+  dependencies:
+    - metrics:collect
+  artifacts:
+    paths:
+      - results/
+      - report.html
+    expire_in: 3 months
+  only:
+    - main
+  tags:
+    - docker

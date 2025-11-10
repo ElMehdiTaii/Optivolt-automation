@@ -1,0 +1,28 @@
+**Contenu du .gitignore** :
+```
+# Résultats et logs
+results/
+logs/
+*.json
+*.log
+
+# Build artifacts
+src/**/bin/
+src/**/obj/
+target/
+scaphandre/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+config/secrets.json
+*.key
+*.pem
