@@ -33,3 +33,4 @@
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.pdb
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.genruntimeconfig.cache
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/ref/OptiVoltCLI.dll
+/home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.sourcelink.json
