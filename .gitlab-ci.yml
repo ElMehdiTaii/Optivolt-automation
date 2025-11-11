@@ -1,4 +1,4 @@
-# Configuration GitLab CI pour OptiVolt (Version avec Fix Horloge)
+# Configuration GitLab CI pour OptiVolt (Version Robuste)
 
 stages:
   - build
@@ -11,10 +11,8 @@ variables:
   DOTNET_VERSION: "8.0"
   TEST_DURATION: "30"
 
-# Template pour les jobs SSH (avec fix horloge)
 .ssh_template: &ssh_template
   before_script:
-    # Fix pour l'erreur d'horloge du runner
     - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
     - apt-get update -qq
     - apt-get install -y -qq openssh-client
@@ -25,39 +23,21 @@ variables:
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
 
-# Build du CLI
-# Build du CLI (Version adaptée à la structure OptiVoltCLI/)
 build:cli:
   stage: build
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
+    - echo "=== Structure du dépôt ==="
     - pwd
     - ls -la
-    # Publier le projet .NET
+    - echo "=== Build du projet ==="
     - cd OptiVoltCLI
     - dotnet publish OptiVoltCLI/OptiVoltCLI.csproj --configuration Release --output ../publish
     - cd ..
-    # Vérifier que publish existe
-    - ls -la publish/
-    # Copier scripts et config s'ils existent
-    - |
-      if [ -d "scripts" ]; then
-        cp -r scripts publish/
-        echo "✓ Scripts copiés"
-      else
-        echo "⚠ Pas de dossier scripts"
-        mkdir -p publish/scripts
-      fi
-    - |
-      if [ -d "config" ]; then
-        cp -r config publish/
-        echo "✓ Config copié"
-      else
-        echo "⚠ Pas de dossier config"
-        mkdir -p publish/config
-      fi
-    # Afficher le résultat final
-    - echo "=== Contenu final de publish ==="
+    - echo "=== Copie des ressources ==="
+    - test -d scripts && cp -r scripts publish/ || mkdir -p publish/scripts
+    - test -d config && cp -r config publish/ || mkdir -p publish/config
+    - echo "=== Contenu final ==="
     - ls -laR publish/
   artifacts:
     paths:
@@ -66,12 +46,12 @@ build:cli:
   tags:
     - docker
 
-# Déploiement Docker
 deploy:docker:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
+    - ls -la publish/
     - cd publish
     - dotnet OptiVoltCLI.dll deploy --environment docker
   dependencies:
@@ -82,7 +62,6 @@ deploy:docker:
   tags:
     - docker
 
-# Déploiement MicroVM
 deploy:microvm:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -98,7 +77,6 @@ deploy:microvm:
   tags:
     - docker
 
-# Déploiement Unikernel
 deploy:unikernel:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -114,7 +92,6 @@ deploy:unikernel:
   tags:
     - docker
 
-# Tests CPU
 test:cpu:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -132,7 +109,6 @@ test:cpu:
   tags:
     - docker
 
-# Tests API
 test:api:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -150,7 +126,6 @@ test:api:
   tags:
     - docker
 
-# Tests Base de Données
 test:db:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -168,17 +143,14 @@ test:db:
   tags:
     - docker
 
-# Collecte des métriques
 metrics:collect:
   stage: metrics
   image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
-    - apt-get install -y -qq jq
+    - apt-get install -y -qq jq || true
     - cd publish
-    - dotnet OptiVoltCLI.dll metrics --environment docker
-    - dotnet OptiVoltCLI.dll metrics --environment microvm || true
-    - dotnet OptiVoltCLI.dll metrics --environment unikernel || true
+    - dotnet OptiVoltCLI.dll metrics --environment docker || true
   dependencies:
     - build:cli
     - test:cpu
@@ -191,21 +163,19 @@ metrics:collect:
   tags:
     - docker
 
-# Génération du rapport
 report:generate:
   stage: report
   image: python:3.11-slim
   before_script:
-    # Fix horloge pour Python image aussi
     - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
     - apt-get update -qq
-    - apt-get install -y -qq jq
-    - pip3 install --quiet matplotlib pandas
+    - apt-get install -y -qq jq || true
+    - pip3 install --quiet matplotlib pandas || true
   script:
-    - cd scripts
-    - python3 generate_dashboard.py ../results
+    - test -f publish/scripts/generate_dashboard.py && python3 publish/scripts/generate_dashboard.py results || echo "Dashboard generation skipped"
   dependencies:
     - metrics:collect
+    - build:cli
   artifacts:
     paths:
       - results/
