@@ -26,16 +26,39 @@ variables:
     - chmod 644 ~/.ssh/known_hosts
 
 # Build du CLI
+# Build du CLI (Version adaptée à la structure OptiVoltCLI/)
 build:cli:
   stage: build
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
+    - pwd
+    - ls -la
+    # Publier le projet .NET
     - cd OptiVoltCLI
-    - dotnet restore
-    - dotnet build --configuration Release
-    - dotnet publish --configuration Release --output /builds/$CI_PROJECT_PATH/publish
-    - cp -r /builds/$CI_PROJECT_PATH/scripts /builds/$CI_PROJECT_PATH/publish/
-    - cp -r /builds/$CI_PROJECT_PATH/config /builds/$CI_PROJECT_PATH/publish/
+    - dotnet publish OptiVoltCLI/OptiVoltCLI.csproj --configuration Release --output ../publish
+    - cd ..
+    # Vérifier que publish existe
+    - ls -la publish/
+    # Copier scripts et config s'ils existent
+    - |
+      if [ -d "scripts" ]; then
+        cp -r scripts publish/
+        echo "✓ Scripts copiés"
+      else
+        echo "⚠ Pas de dossier scripts"
+        mkdir -p publish/scripts
+      fi
+    - |
+      if [ -d "config" ]; then
+        cp -r config publish/
+        echo "✓ Config copié"
+      else
+        echo "⚠ Pas de dossier config"
+        mkdir -p publish/config
+      fi
+    # Afficher le résultat final
+    - echo "=== Contenu final de publish ==="
+    - ls -laR publish/
   artifacts:
     paths:
       - publish/
