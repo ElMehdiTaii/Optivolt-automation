@@ -30,9 +30,12 @@ build:cli:
   script:
     - cd OptiVoltCLI
     - dotnet restore
-    - dotnet build --configuration Release
-    - dotnet publish --configuration Release -r linux-x64 --self-contained true \
-        -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true \
+    - dotnet build -c Release
+    # Publication en binaire autonome (self-contained)
+    - |
+      dotnet publish ./OptiVoltCLI.csproj -c Release -r linux-x64 --self-contained true \
+        -p:PublishSingleFile=true \
+        -p:EnableCompressionInSingleFile=true \
         -o ../publish
   artifacts:
     paths:
