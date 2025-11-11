@@ -1,30 +1,30 @@
 {
   "hosts": {
     "docker": {
-      "hostname": "docker-test",
-      "ip": "192.168.1.100",
-      "user": "optivolt",
+      "hostname": "localhost",
+      "ip": "127.0.0.1",
+      "user": "root",
       "port": 22,
-      "workdir": "/home/optivolt/optivolt-tests"
+      "workdir": "/tmp/optivolt-tests"
     },
     "microvm": {
-      "hostname": "microvm-test",
-      "ip": "192.168.1.101",
-      "user": "optivolt",
+      "hostname": "localhost",
+      "ip": "127.0.0.1",
+      "user": "root",
       "port": 22,
-      "workdir": "/home/optivolt/optivolt-tests"
+      "workdir": "/tmp/optivolt-tests"
     },
     "unikernel": {
-      "hostname": "unikernel-test",
-      "ip": "192.168.1.102",
-      "user": "optivolt",
+      "hostname": "localhost",
+      "ip": "127.0.0.1",
+      "user": "root",
       "port": 22,
-      "workdir": "/home/optivolt/optivolt-tests"
+      "workdir": "/tmp/optivolt-tests"
     },
     "localhost": {
       "hostname": "localhost",
       "ip": "127.0.0.1",
-      "user": "current",
+      "user": "root",
       "port": 22,
       "workdir": "/tmp/optivolt-tests"
     }
