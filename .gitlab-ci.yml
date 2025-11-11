@@ -50,45 +50,36 @@ deploy:docker:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
 
-  # Démarre docker-in-docker SANS TLS
   services:
     - name: docker:27-dind
       alias: docker
-      command: ["--tls=false"]   # <— important
+      command: ["--tls=false"]   # pas de TLS => pas de certs à gérer
 
   variables:
-    DOCKER_HOST: "tcp://docker:2375"   # sans TLS
-    DOCKER_TLS_CERTDIR: ""             # désactive la génération de certs
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
 
   before_script:
     - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
     - apt-get update -qq
-    # client Docker uniquement (léger)
-    - apt-get install -y -qq docker-cli || true
-    # Attendre que dind réponde
+    - apt-get install -y -qq docker.io  # <— le client Docker
     - |
       for i in $(seq 1 40); do
         docker -H "$DOCKER_HOST" info >/dev/null 2>&1 && break
         echo "Waiting for Docker daemon on $DOCKER_HOST ... ($i/40)"; sleep 1
       done
-    # Sanity check (affiche la version)
     - docker -H "$DOCKER_HOST" version
 
   script:
     - cd publish
     - echo "[CI/CD] Déploiement Docker"
     - chmod +x scripts/deploy_docker.sh
-    # Exécute ton script (il appellera 'docker', qui utilisera DOCKER_HOST)
     - bash scripts/deploy_docker.sh /tmp/optivolt-tests
     - echo "[CI/CD] ✓ Déploiement terminé"
 
-  dependencies:
-    - build:cli
-  only:
-    - main
-    - develop
-  tags:
-    - docker
+  dependencies: [build:cli]
+  only: [main, develop]
+  tags: [docker]
 
 
 deploy:microvm:
