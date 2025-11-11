@@ -1,4 +1,4 @@
-# Configuration GitLab CI pour OptiVolt (Version avec Simulation)
+# Configuration GitLab CI pour OptiVolt (Version avec Simulation + Docker-in-Docker)
 
 stages:
   - build
@@ -10,6 +10,11 @@ stages:
 variables:
   DOTNET_VERSION: "8.0"
   TEST_DURATION: "30"
+  # Variables nécessaires à Docker-in-Docker
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_VERIFY: "1"
+  DOCKER_CERT_PATH: "/certs/client"
 
 .ssh_template: &ssh_template
   before_script:
@@ -41,80 +46,87 @@ build:cli:
     - echo "=== Contenu final ==="
     - ls -laR publish/
   artifacts:
-    paths:
-      - publish/
+    paths: [publish/]
     expire_in: 1 hour
   tags: [docker]
 
-# ✅ Déploiement en mode simulation (sans SSH)
+# ===========================
+#     DEPLOY (avec dind)
+# ===========================
+.deploy_with_docker:
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  services:
+    - name: docker:27-dind
+      alias: docker
+  before_script:
+    - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+    - apt-get update -qq
+    # Installe le client docker (pour parler au service dind)
+    - apt-get install -y -qq docker.io || apt-get install -y -qq docker-cli || true
+    # Attendre que le démon dind soit prêt
+    - |
+      for i in $(seq 1 30); do
+        docker info >/dev/null 2>&1 && break
+        echo "Docker not ready yet... ($i/30)"; sleep 1
+      done
+    - docker info
+
 deploy:docker:
   stage: deploy
-  image: mcr.microsoft.com/dotnet/sdk:8.0
+  extends: .deploy_with_docker
   script:
     - cd publish
     - echo "[CI/CD] Simulation du déploiement Docker"
     - chmod +x scripts/deploy_docker.sh
     - bash scripts/deploy_docker.sh /tmp/optivolt-tests
     - echo "[CI/CD] ✓ Déploiement simulé avec succès"
-  dependencies:
-    - build:cli
-  only:
-    - main
-    - develop
-  tags:
-    - docker
+  dependencies: [build:cli]
+  only: [main, develop]
+  tags: [docker]
 
 deploy:microvm:
   stage: deploy
-  image: mcr.microsoft.com/dotnet/sdk:8.0
+  extends: .deploy_with_docker
   script:
     - cd publish
     - echo "[CI/CD] Simulation du déploiement MicroVM"
     - chmod +x scripts/deploy_microvm.sh
     - bash scripts/deploy_microvm.sh /tmp/optivolt-tests
-  dependencies:
-    - build:cli
-  only:
-    - main
+  dependencies: [build:cli]
+  only: [main]
   when: manual
-  tags:
-    - docker
+  tags: [docker]
 
 deploy:unikernel:
   stage: deploy
-  image: mcr.microsoft.com/dotnet/sdk:8.0
+  extends: .deploy_with_docker
   script:
     - cd publish
     - echo "[CI/CD] Simulation du déploiement Unikernel"
     - chmod +x scripts/deploy_unikernel.sh
     - bash scripts/deploy_unikernel.sh /tmp/optivolt-tests
-  dependencies:
-    - build:cli
-  only:
-    - main
+  dependencies: [build:cli]
+  only: [main]
   when: manual
-  tags:
-    - docker
+  tags: [docker]
 
-# Tests simplifiés
+# ===========================
+#     TESTS (fix mkdir)
+# ===========================
 test:cpu:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
     - cd publish
     - echo "[TEST] Simulation test CPU"
-    - echo '{"test":"cpu","status":"passed"}' > ../results/test_cpu.json
     - mkdir -p ../results
+    - echo '{"test":"cpu","status":"passed"}' > ../results/test_cpu.json
     - echo "[TEST] ✓ Test CPU terminé"
-  dependencies:
-    - build:cli
-    - deploy:docker
+  dependencies: [build:cli, deploy:docker]
   artifacts:
-    paths:
-      - results/
+    paths: [results/]
     expire_in: 1 week
-  tags:
-    - docker
+  tags: [docker]
 
 test:api:
   stage: test
@@ -125,15 +137,11 @@ test:api:
     - mkdir -p ../results
     - echo '{"test":"api","status":"passed"}' > ../results/test_api.json
     - echo "[TEST] ✓ Test API terminé"
-  dependencies:
-    - build:cli
-    - deploy:docker
+  dependencies: [build:cli, deploy:docker]
   artifacts:
-    paths:
-      - results/
+    paths: [results/]
     expire_in: 1 week
-  tags:
-    - docker
+  tags: [docker]
 
 test:db:
   stage: test
@@ -144,15 +152,11 @@ test:db:
     - mkdir -p ../results
     - echo '{"test":"db","status":"passed"}' > ../results/test_db.json
     - echo "[TEST] ✓ Test DB terminé"
-  dependencies:
-    - build:cli
-    - deploy:docker
+  dependencies: [build:cli, deploy:docker]
   artifacts:
-    paths:
-      - results/
+    paths: [results/]
     expire_in: 1 week
-  tags:
-    - docker
+  tags: [docker]
 
 metrics:collect:
   stage: metrics
@@ -163,7 +167,7 @@ metrics:collect:
     - echo "[METRICS] Simulation collecte de métriques"
     - mkdir -p ../results
     - |
-      cat > ../results/docker_metrics_ci.json <<EOF
+      cat > ../results/docker_metrics_ci.json <<'EOF'
       {
         "metadata": {
           "environment": "docker",
@@ -178,24 +182,16 @@ metrics:collect:
             "memory_usage_percent": 38.5
           }
         },
-        "energy_metrics": {
-          "note": "Simulated in CI/CD"
-        },
+        "energy_metrics": { "note": "Simulated in CI/CD" },
         "container_metrics": {}
       }
       EOF
     - echo "[METRICS] ✓ Métriques simulées générées"
-  dependencies:
-    - build:cli
-    - test:cpu
-    - test:api
-    - test:db
+  dependencies: [build:cli, test:cpu, test:api, test:db]
   artifacts:
-    paths:
-      - results/
+    paths: [results/]
     expire_in: 1 month
-  tags:
-    - docker
+  tags: [docker]
 
 report:generate:
   stage: report
@@ -210,14 +206,9 @@ report:generate:
     - echo "[REPORT] Génération du dashboard (simulation)"
     - test -f publish/scripts/generate_dashboard.py && python3 publish/scripts/generate_dashboard.py results || echo "Dashboard generation skipped"
     - echo "[REPORT] ✓ Rapport généré"
-  dependencies:
-    - metrics:collect
-    - build:cli
+  dependencies: [metrics:collect, build:cli]
   artifacts:
-    paths:
-      - results/
+    paths: [results/]
     expire_in: 3 months
-  only:
-    - main
-  tags:
-    - docker
+  only: [main]
+  tags: [docker]
