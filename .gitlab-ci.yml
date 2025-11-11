@@ -1,4 +1,4 @@
-# Configuration GitLab CI pour OptiVolt
+# Configuration GitLab CI pour OptiVolt (Version avec Fix Horloge)
 
 stages:
   - build
@@ -11,9 +11,10 @@ variables:
   DOTNET_VERSION: "8.0"
   TEST_DURATION: "30"
 
-# Template pour les jobs SSH
+# Template pour les jobs SSH (avec fix horloge)
 .ssh_template: &ssh_template
   before_script:
+    # Fix pour l'erreur d'horloge du runner
     - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
     - apt-get update -qq
     - apt-get install -y -qq openssh-client
@@ -29,15 +30,10 @@ build:cli:
   stage: build
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
-    - cd OptiVoltCLI
+    - cd src/OptiVoltCLI/OptiVoltCLI
     - dotnet restore
-    - dotnet build -c Release
-    # Publication en binaire autonome (self-contained)
-    - |
-      dotnet publish ./OptiVoltCLI.csproj -c Release -r linux-x64 --self-contained true \
-        -p:PublishSingleFile=true \
-        -p:EnableCompressionInSingleFile=true \
-        -o ../publish
+    - dotnet build --configuration Release
+    - dotnet publish --configuration Release --output ../../../publish
   artifacts:
     paths:
       - publish/
@@ -66,7 +62,7 @@ deploy:docker:
 # Déploiement MicroVM
 deploy:microvm:
   stage: deploy
-  image: ubuntu:22.04
+  image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
     - cd publish
@@ -82,7 +78,7 @@ deploy:microvm:
 # Déploiement Unikernel
 deploy:unikernel:
   stage: deploy
-  image: ubuntu:22.04
+  image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
     - cd publish
@@ -98,7 +94,7 @@ deploy:unikernel:
 # Tests CPU
 test:cpu:
   stage: test
-  image: ubuntu:22.04
+  image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
     - cd publish
@@ -116,7 +112,7 @@ test:cpu:
 # Tests API
 test:api:
   stage: test
-  image: ubuntu:22.04
+  image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
     - cd publish
@@ -134,7 +130,7 @@ test:api:
 # Tests Base de Données
 test:db:
   stage: test
-  image: ubuntu:22.04
+  image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
     - cd publish
@@ -152,7 +148,7 @@ test:db:
 # Collecte des métriques
 metrics:collect:
   stage: metrics
-  image: ubuntu:22.04
+  image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
     - apt-get install -y -qq jq
@@ -168,8 +164,6 @@ metrics:collect:
   artifacts:
     paths:
       - results/
-    reports:
-      dotenv: results/metrics.env
     expire_in: 1 month
   tags:
     - docker
@@ -177,20 +171,21 @@ metrics:collect:
 # Génération du rapport
 report:generate:
   stage: report
-  image: ubuntu:22.04
-  script:
+  image: python:3.11-slim
+  before_script:
+    # Fix horloge pour Python image aussi
+    - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
     - apt-get update -qq
-    - apt-get install -y -qq jq python3 python3-pip
-    - pip3 install matplotlib pandas
-    - cd publish
-    - dotnet OptiVoltCLI.dll report
-    - python3 ../scripts/generate_dashboard.py
+    - apt-get install -y -qq jq
+    - pip3 install --quiet matplotlib pandas
+  script:
+    - cd scripts
+    - python3 generate_dashboard.py ../results
   dependencies:
     - metrics:collect
   artifacts:
     paths:
       - results/
-      - report.html
     expire_in: 3 months
   only:
     - main
