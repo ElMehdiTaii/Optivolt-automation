@@ -52,8 +52,10 @@ deploy:docker:
   image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
-    - ls -la publish/
     - cd publish
+    - rm -rf /root/optivolt-automation || true
+    - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
+    - test -f /root/optivolt-automation/config/hosts.json && echo "Config OK" || (echo "Config missing" && ls -la config && exit 1)
     - dotnet OptiVoltCLI.dll deploy --environment docker
   dependencies:
     - build:cli
