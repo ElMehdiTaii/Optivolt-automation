@@ -44,7 +44,8 @@ build:cli:
     paths:
       - publish/
     expire_in: 1 hour
-  tags: [docker]
+  tags: 
+    - docker
 
 
 deploy:docker:
