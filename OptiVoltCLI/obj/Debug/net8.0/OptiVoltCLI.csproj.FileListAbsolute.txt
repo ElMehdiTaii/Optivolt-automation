@@ -27,10 +27,10 @@
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.AssemblyInfoInputs.cache
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.AssemblyInfo.cs
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.csproj.CoreCompileInputs.cache
+/home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.sourcelink.json
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.csproj.CopyComplete
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.dll
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/refint/OptiVoltCLI.dll
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.pdb
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.genruntimeconfig.cache
 /home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/ref/OptiVoltCLI.dll
-/home/ubuntu/optivolt-automation/OptiVoltCLI/obj/Debug/net8.0/OptiVoltCLI.sourcelink.json

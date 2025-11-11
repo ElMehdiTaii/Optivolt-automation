@@ -3,12 +3,6 @@ using System.CommandLine;
 using System.IO;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-
-using System;
-using System.CommandLine;
-using System.IO;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Renci.SshNet;
 
@@ -133,100 +127,202 @@ namespace OptiVoltCLI
         }
 
         static async Task DeployEnvironment(string environment)
+{
+    Console.WriteLine($"[DEPLOY] Déploiement de l'environnement: {environment}");
+    
+    var config = LoadConfig();
+    if (config == null) return;
+
+    if (!config["hosts"].HasValues || config["hosts"][environment] == null)
+    {
+        Console.WriteLine($"[ERROR] Environnement '{environment}' non trouvé dans la configuration");
+        return;
+    }
+
+    var hostData = config["hosts"][environment];
+    string hostname = hostData["hostname"].ToString();
+    string user = hostData["user"].ToString();
+    int port = (int)hostData["port"];
+    string workdir = hostData["workdir"].ToString();
+
+    if (user == "current")
+        user = Environment.UserName;
+
+    string scriptKey = $"{environment}_deploy";
+    string scriptPath = config["scripts"][scriptKey]?.ToString() ?? "scripts/deploy_docker.sh";
+    
+    // ✅ Utiliser le chemin relatif depuis publish
+    string fullScriptPath = Path.Combine(
+        AppContext.BaseDirectory,
+        scriptPath
+    );
+    
+    // ✅ Fallback si le fichier n'existe pas
+    if (!File.Exists(fullScriptPath))
+    {
+        fullScriptPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "optivolt-automation", scriptPath
+        );
+    }
+
+    Console.WriteLine($"[DEPLOY] Hôte: {hostname}");
+    Console.WriteLine($"[DEPLOY] Script: {scriptPath}");
+    Console.WriteLine($"[DEPLOY] Workdir: {workdir}");
+
+    try
+    {
+        SshClient client = null;
+        SftpClient sftp = null;
+        
+        // ✅ Vérifier si on est dans GitLab CI (agent SSH configuré)
+        string sshAuthSock = Environment.GetEnvironmentVariable("SSH_AUTH_SOCK");
+        
+        if (!string.IsNullOrEmpty(sshAuthSock))
         {
-            Console.WriteLine($"[DEPLOY] Déploiement de l'environnement: {environment}");
+            // ✅ Mode CI/CD : L'agent SSH est déjà configuré
+            // SSH.NET utilisera automatiquement l'agent si disponible
+            Console.WriteLine($"[DEPLOY] Mode CI/CD détecté (SSH_AUTH_SOCK={sshAuthSock})");
+            Console.WriteLine($"[DEPLOY] Tentative de connexion avec l'agent SSH...");
             
-            var config = LoadConfig();
-            if (config == null) return;
-
-            if (!config["hosts"].HasValues || config["hosts"][environment] == null)
-            {
-                Console.WriteLine($"[ERROR] Environnement '{environment}' non trouvé dans la configuration");
-                return;
-            }
-
-            var hostData = config["hosts"][environment];
-            string hostname = hostData["hostname"].ToString();
-            string user = hostData["user"].ToString();
-            int port = (int)hostData["port"];
-            string workdir = hostData["workdir"].ToString();
-
-            if (user == "current")
-                user = Environment.UserName;
-
-            string scriptKey = $"{environment}_deploy";
-            string scriptPath = config["scripts"][scriptKey]?.ToString() ?? "scripts/deploy_docker.sh";
-            string fullScriptPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "optivolt-automation", scriptPath
-            );
-
-            Console.WriteLine($"[DEPLOY] Hôte: {hostname}");
-            Console.WriteLine($"[DEPLOY] Script: {scriptPath}");
-            Console.WriteLine($"[DEPLOY] Workdir: {workdir}");
-
+            // Créer un client SSH sans authentification explicite
+            // SSH.NET va automatiquement utiliser l'agent SSH
             try
             {
-                string keyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "id_ed25519");
-                var keyFile = new PrivateKeyFile(keyPath);
-                var keyFiles = new[] { keyFile };
-                var methods = new[] { new PrivateKeyAuthenticationMethod(user, keyFiles) };
-                var connectionInfo = new ConnectionInfo(hostname, port, user, methods);
+                // ✅ Méthode 1 : Utiliser NoneAuthenticationMethod (l'agent SSH prend le relais)
+                var authNone = new NoneAuthenticationMethod(user);
+                var connectionInfo = new ConnectionInfo(hostname, port, user, authNone);
+                
+                client = new SshClient(connectionInfo);
+                sftp = new SftpClient(connectionInfo);
+            }
+            catch
+            {
+                Console.WriteLine($"[DEPLOY] Erreur avec NoneAuthenticationMethod, essai alternatif...");
+                
+                // ✅ Méthode 2 : Essayer avec PasswordAuthenticationMethod vide
+                // (l'agent SSH sera quand même utilisé)
+                var connectionInfo = new ConnectionInfo(hostname, port, user, 
+                    new PasswordAuthenticationMethod(user, ""));
+                
+                client = new SshClient(connectionInfo);
+                sftp = new SftpClient(connectionInfo);
+            }
+        }
+        else
+        {
+            // ✅ Mode local : Utiliser la clé fichier
+            Console.WriteLine($"[DEPLOY] Mode local détecté");
+            string keyPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), 
+                ".ssh", "id_ed25519"
+            );
+            
+            if (!File.Exists(keyPath))
+            {
+                Console.WriteLine($"[DEPLOY] ✗ Erreur: Clé SSH introuvable: {keyPath}");
+                Console.WriteLine($"[DEPLOY] Astuce: Assurez-vous que la clé SSH existe ou configurez SSH_AUTH_SOCK");
+                return;
+            }
+            
+            var keyFile = new PrivateKeyFile(keyPath);
+            var connectionInfo = new ConnectionInfo(hostname, port, user, 
+                new PrivateKeyAuthenticationMethod(user, keyFile));
+            
+            client = new SshClient(connectionInfo);
+            sftp = new SftpClient(connectionInfo);
+        }
 
-                using (var client = new SshClient(connectionInfo))
-                {
-                    Console.WriteLine($"[DEPLOY] Connexion à {hostname}...");
-                    client.Connect();
-                    Console.WriteLine($"[DEPLOY] ✓ Connecté");
-
-                    // Créer le répertoire de travail
-                    var mkdirCmd = client.RunCommand($"mkdir -p {workdir}");
-                    Console.WriteLine($"[DEPLOY] Création du répertoire: {workdir}");
-
-                    // Copier le script
-                    using (var sftp = new SftpClient(connectionInfo))
-                    {
-                        sftp.Connect();
-                        string remoteScriptPath = $"{workdir}/deploy.sh";
-                        using (var fileStream = File.OpenRead(fullScriptPath))
-                        {
-                            sftp.UploadFile(fileStream, remoteScriptPath, true);
-                        }
-                        Console.WriteLine($"[DEPLOY] Script copié sur l'hôte distant");
-                        sftp.Disconnect();
-                    }
-
-                    // Rendre le script exécutable et l'exécuter
-                    var chmodCmd = client.RunCommand($"chmod +x {workdir}/deploy.sh");
-                    Console.WriteLine($"[DEPLOY] Exécution du script de déploiement...");
-                    var deployCmd = client.RunCommand($"cd {workdir} && ./deploy.sh {workdir}");
-                    
-                    Console.WriteLine($"\n--- Output ---");
-                    Console.WriteLine(deployCmd.Result);
-                    if (!string.IsNullOrEmpty(deployCmd.Error))
-                    {
-                        Console.WriteLine($"--- Errors ---");
-                        Console.WriteLine(deployCmd.Error);
-                    }
-
-                    if (deployCmd.ExitStatus == 0)
-                    {
-                        Console.WriteLine($"\n[DEPLOY] ✓ Environnement {environment} déployé avec succès");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"\n[DEPLOY] ✗ Échec du déploiement (code: {deployCmd.ExitStatus})");
-                    }
-
-                    client.Disconnect();
-                }
+        using (client)
+        using (sftp)
+        {
+            Console.WriteLine($"[DEPLOY] Connexion à {hostname}:{port} en tant que {user}...");
+            
+            try
+            {
+                client.Connect();
+                Console.WriteLine($"[DEPLOY] ✓ SSH connecté");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DEPLOY] ✗ Erreur: {ex.Message}");
+                Console.WriteLine($"[DEPLOY] ✗ Erreur de connexion SSH: {ex.Message}");
+                Console.WriteLine($"[DEPLOY] Détails: {ex.GetType().Name}");
+                return;
             }
-        }
 
+            // Créer le répertoire de travail
+            var mkdirCmd = client.RunCommand($"mkdir -p {workdir}");
+            Console.WriteLine($"[DEPLOY] Création du répertoire: {workdir}");
+
+            // Vérifier que le script existe localement
+            if (!File.Exists(fullScriptPath))
+            {
+                Console.WriteLine($"[DEPLOY] ✗ Script introuvable: {fullScriptPath}");
+                Console.WriteLine($"[DEPLOY] Fichiers disponibles:");
+                var scriptsDir = Path.Combine(AppContext.BaseDirectory, "scripts");
+                if (Directory.Exists(scriptsDir))
+                {
+                    foreach (var file in Directory.GetFiles(scriptsDir))
+                    {
+                        Console.WriteLine($"  - {Path.GetFileName(file)}");
+                    }
+                }
+                return;
+            }
+
+            // Copier le script
+            try
+            {
+                sftp.Connect();
+                string remoteScriptPath = $"{workdir}/deploy.sh";
+                using (var fileStream = File.OpenRead(fullScriptPath))
+                {
+                    sftp.UploadFile(fileStream, remoteScriptPath, true);
+                }
+                Console.WriteLine($"[DEPLOY] ✓ Script copié sur l'hôte distant");
+                sftp.Disconnect();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEPLOY] ✗ Erreur SFTP: {ex.Message}");
+                return;
+            }
+
+            // Rendre le script exécutable et l'exécuter
+            var chmodCmd = client.RunCommand($"chmod +x {workdir}/deploy.sh");
+            Console.WriteLine($"[DEPLOY] Exécution du script de déploiement...");
+            var deployCmd = client.RunCommand($"cd {workdir} && ./deploy.sh {workdir}");
+            
+            Console.WriteLine($"\n--- Output ---");
+            Console.WriteLine(deployCmd.Result);
+            if (!string.IsNullOrEmpty(deployCmd.Error))
+            {
+                Console.WriteLine($"--- Errors ---");
+                Console.WriteLine(deployCmd.Error);
+            }
+
+            if (deployCmd.ExitStatus == 0)
+            {
+                Console.WriteLine($"\n[DEPLOY] ✓ Environnement {environment} déployé avec succès");
+            }
+            else
+            {
+                Console.WriteLine($"\n[DEPLOY] ✗ Échec du déploiement (code: {deployCmd.ExitStatus})");
+            }
+
+            client.Disconnect();
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[DEPLOY] ✗ Erreur: {ex.Message}");
+        Console.WriteLine($"[DEPLOY] Type: {ex.GetType().Name}");
+        if (ex.InnerException != null)
+        {
+            Console.WriteLine($"[DEPLOY] Détails: {ex.InnerException.Message}");
+        }
+    }
+}
         static async Task RunTests(string environment, string testType)
         {
             Console.WriteLine($"[TEST] Exécution des tests {testType} sur {environment}");
