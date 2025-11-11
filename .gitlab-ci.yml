@@ -14,6 +14,7 @@ variables:
 # Template pour les jobs SSH
 .ssh_template: &ssh_template
   before_script:
+    - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
     - apt-get update -qq
     - apt-get install -y -qq openssh-client
     - eval $(ssh-agent -s)
@@ -46,7 +47,6 @@ build:cli:
   tags:
     - docker
 
-# Déploiement Docker
 # Déploiement Docker
 deploy:docker:
   stage: deploy
