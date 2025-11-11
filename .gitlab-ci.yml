@@ -46,41 +46,23 @@ build:cli:
     expire_in: 1 hour
   tags: [docker]
 
+# ✅ Déploiement en mode simulation (sans SSH)
 deploy:docker:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
-
-  services:
-    - name: docker:27-dind
-      alias: docker
-      command: ["--tls=false"]   # pas de TLS => pas de certs à gérer
-
-  variables:
-    DOCKER_HOST: "tcp://docker:2375"
-    DOCKER_TLS_CERTDIR: ""
-
-  before_script:
-    - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
-    - apt-get update -qq
-    - apt-get install -y -qq docker.io  # <— le client Docker
-    - |
-      for i in $(seq 1 40); do
-        docker -H "$DOCKER_HOST" info >/dev/null 2>&1 && break
-        echo "Waiting for Docker daemon on $DOCKER_HOST ... ($i/40)"; sleep 1
-      done
-    - docker -H "$DOCKER_HOST" version
-
   script:
     - cd publish
-    - echo "[CI/CD] Déploiement Docker"
+    - echo "[CI/CD] Simulation du déploiement Docker"
     - chmod +x scripts/deploy_docker.sh
     - bash scripts/deploy_docker.sh /tmp/optivolt-tests
-    - echo "[CI/CD] ✓ Déploiement terminé"
-
-  dependencies: [build:cli]
-  only: [main, develop]
-  tags: [docker]
-
+    - echo "[CI/CD] ✓ Déploiement simulé avec succès"
+  dependencies:
+    - build:cli
+  only:
+    - main
+    - develop
+  tags:
+    - docker
 
 deploy:microvm:
   stage: deploy
