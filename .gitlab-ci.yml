@@ -32,7 +32,8 @@ build:cli:
     - ls -la
     - echo "=== Build du projet ==="
     - cd OptiVoltCLI
-    - dotnet publish OptiVoltCLI/OptiVoltCLI.csproj --configuration Release --output ../publish
+    - dotnet restore ./OptiVoltCLI.csproj
+    - dotnet publish ./OptiVoltCLI.csproj -c Release -o ../publish
     - cd ..
     - echo "=== Copie des ressources ==="
     - test -d scripts && cp -r scripts publish/ || mkdir -p publish/scripts
@@ -43,8 +44,8 @@ build:cli:
     paths:
       - publish/
     expire_in: 1 hour
-  tags:
-    - docker
+  tags: [docker]
+
 
 deploy:docker:
   stage: deploy
