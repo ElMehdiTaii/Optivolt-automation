@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OptiVoltCLI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+542e1b8d9fc550576da82603299c84660f94a735")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b7c5dd2c5a60ccc019782130abbaafa5f8573bff")]
 [assembly: System.Reflection.AssemblyProductAttribute("OptiVoltCLI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OptiVoltCLI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
