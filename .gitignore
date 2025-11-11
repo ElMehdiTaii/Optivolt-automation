@@ -23,6 +23,5 @@ scaphandre/
 Thumbs.db
 
 # Secrets
-#config/secrets.json
 *.key
 *.pem
