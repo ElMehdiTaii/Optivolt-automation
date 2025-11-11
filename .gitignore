@@ -3,7 +3,7 @@
 # Résultats et logs
 results/
 logs/
-*.json
+#*.json
 *.log
 
 # Build artifacts
