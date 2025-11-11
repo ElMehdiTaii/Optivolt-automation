@@ -33,12 +33,12 @@ build:cli:
     - cd OptiVoltCLI
     - dotnet restore
     - dotnet build --configuration Release
-    - dotnet publish --configuration Release --output ../../../publish
+    - dotnet publish --configuration Release --output /builds/$CI_PROJECT_PATH/publish
+    - cp -r /builds/$CI_PROJECT_PATH/scripts /builds/$CI_PROJECT_PATH/publish/
+    - cp -r /builds/$CI_PROJECT_PATH/config /builds/$CI_PROJECT_PATH/publish/
   artifacts:
     paths:
       - publish/
-      - scripts/
-      - config/
     expire_in: 1 hour
   tags:
     - docker
