@@ -46,43 +46,39 @@ build:cli:
     expire_in: 1 hour
   tags: [docker]
 
-# ✅ Déploiement en mode simulation (sans SSH)
 deploy:docker:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
 
-  # 👇 Add a Docker daemon only for this job
+  # Démarre docker-in-docker SANS TLS
   services:
     - name: docker:27-dind
       alias: docker
+      command: ["--tls=false"]   # <— important
 
-  # 👇 Limit Docker-in-Docker vars to this job
   variables:
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_CERT_PATH: "/certs/client"
-    DOCKER_TLS_VERIFY: "1"
+    DOCKER_HOST: "tcp://docker:2375"   # sans TLS
+    DOCKER_TLS_CERTDIR: ""             # désactive la génération de certs
 
   before_script:
-    # Install Docker CLI in the .NET image (Debian/Ubuntu base)
     - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
     - apt-get update -qq
-    - apt-get install -y -qq docker.io || apt-get install -y -qq docker-cli || true
-
-    # Wait for docker:dind to be ready
+    # client Docker uniquement (léger)
+    - apt-get install -y -qq docker-cli || true
+    # Attendre que dind réponde
     - |
       for i in $(seq 1 40); do
-        docker info >/dev/null 2>&1 && break
-        echo "Waiting for Docker daemon... ($i/40)"; sleep 1
+        docker -H "$DOCKER_HOST" info >/dev/null 2>&1 && break
+        echo "Waiting for Docker daemon on $DOCKER_HOST ... ($i/40)"; sleep 1
       done
-    - docker info
+    # Sanity check (affiche la version)
+    - docker -H "$DOCKER_HOST" version
 
   script:
     - cd publish
     - echo "[CI/CD] Déploiement Docker"
     - chmod +x scripts/deploy_docker.sh
-    # Optionnel: ne pas échouer si docker pas dispo (sécurité)
-    - command -v docker || { echo "[WARN] docker introuvable, on simule le déploiement"; exit 0; }
+    # Exécute ton script (il appellera 'docker', qui utilisera DOCKER_HOST)
     - bash scripts/deploy_docker.sh /tmp/optivolt-tests
     - echo "[CI/CD] ✓ Déploiement terminé"
 
@@ -93,6 +89,7 @@ deploy:docker:
     - develop
   tags:
     - docker
+
 
 deploy:microvm:
   stage: deploy
