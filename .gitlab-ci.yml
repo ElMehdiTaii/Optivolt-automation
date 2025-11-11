@@ -47,6 +47,8 @@ deploy:docker:
   image: ubuntu:22.04
   <<: *ssh_template
   script:
+    - ls -al
+    - test -d publish || (echo "publish folder missing" && exit 1)
     - cd publish
     - dotnet OptiVoltCLI.dll deploy --environment docker
   dependencies:
