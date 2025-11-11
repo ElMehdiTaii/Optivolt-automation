@@ -47,18 +47,19 @@ build:cli:
     - docker
 
 # Déploiement Docker
-deploy:microvm:
+# Déploiement Docker
+deploy:docker:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
     - cd publish
-    - dotnet OptiVoltCLI.dll deploy --environment microvm
+    - dotnet OptiVoltCLI.dll deploy --environment docker
   dependencies:
     - build:cli
   only:
     - main
-  when: manual
+    - develop
   tags:
     - docker
 
