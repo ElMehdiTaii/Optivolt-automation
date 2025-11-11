@@ -47,18 +47,18 @@ build:cli:
     - docker
 
 # Déploiement Docker
-deploy:docker:
+deploy:microvm:
   stage: deploy
-  image: ubuntu:22.04
+  image: mcr.microsoft.com/dotnet/sdk:8.0
   <<: *ssh_template
   script:
     - cd publish
-    - dotnet OptiVoltCLI.dll deploy --environment docker
+    - dotnet OptiVoltCLI.dll deploy --environment microvm
   dependencies:
     - build:cli
   only:
     - main
-    - develop
+  when: manual
   tags:
     - docker
 
