@@ -149,9 +149,14 @@ test:db:
 metrics:collect:
   stage: metrics
   image: mcr.microsoft.com/dotnet/sdk:8.0
-  <<: *ssh_template
+  # your ssh template stays here
   script:
+    - apt-get update -qq || true
     - apt-get install -y -qq jq || true
+    # Create the absolute path expected by the app and copy the config
+    - mkdir -p /root/optivolt-automation/config
+    - cp config/hosts.json /root/optivolt-automation/config/hosts.json
+    # run CLI from publish
     - cd publish
     - dotnet OptiVoltCLI.dll metrics --environment docker || true
   dependencies:
@@ -163,8 +168,8 @@ metrics:collect:
     paths:
       - results/
     expire_in: 1 month
-  tags:
-    - docker
+  tags: [docker]
+
 
 report:generate:
   stage: report
