@@ -80,7 +80,6 @@ deploy:microvm:
     - deploy:docker
   only:
     - main
-  when: manual
   allow_failure: true
   tags:
     - docker
@@ -97,7 +96,6 @@ deploy:unikernel:
     - deploy:docker
   only:
     - main
-  when: manual
   allow_failure: true
   tags:
     - docker
