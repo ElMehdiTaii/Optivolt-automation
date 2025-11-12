@@ -236,7 +236,7 @@ report:generate:
     - test -f results/metrics.json && cp results/metrics.json public/ || true
     - echo "[REPORT] Copie du dashboard..."
     - test -f results/dashboard.html && cp results/dashboard.html public/index.html || echo "Dashboard not found"
-    - echo "[REPORT] ✓ Dashboard généré: public/index.html"
+    - echo "[REPORT] ✓ Dashboard généré:"
     - ls -la public/
   artifacts:
     paths:
