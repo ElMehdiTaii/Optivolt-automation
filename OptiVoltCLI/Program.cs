@@ -24,7 +24,7 @@ namespace OptiVoltCLI
             var envOption = new Option<string>(
                 "--environment",
                 description: "Type d'environnement (docker, microvm, unikernel, localhost)",
-                getDefaultValue: () => "localhost"
+                getDefaultValue: () => "docker"
             );
             deployCommand.AddOption(envOption);
             deployCommand.SetHandler(async (string env) =>
