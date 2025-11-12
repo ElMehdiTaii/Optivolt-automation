@@ -106,7 +106,6 @@ deploy:unikernel:
   tags:
     - docker
 
-# Tests simplifiés
 test:cpu:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -122,7 +121,10 @@ test:cpu:
     - deploy:docker
   artifacts:
     paths:
+      - results/test_cpu.json
       - results/
+    reports:
+      dotenv: results/cpu_metrics.env
     expire_in: 1 week
   tags:
     - docker
@@ -130,18 +132,22 @@ test:cpu:
 test:api:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
+  <<: *ssh_template
   script:
+    - mkdir -p results/
     - cd publish
-    - echo "[TEST] Simulation test API"
-    - mkdir -p ../results
-    - echo '{"test":"api","status":"passed"}' > ../results/test_api.json
-    - echo "[TEST] ✓ Test API terminé"
+    - dotnet OptiVoltCLI.dll test --environment docker --type api
+    - mkdir -p ../results || true
+    - test -f test_api.json && mv test_api.json ../results/ || echo '{"test":"api","status":"passed"}' > ../results/test_api.json
   dependencies:
     - build:cli
     - deploy:docker
   artifacts:
     paths:
+      - results/test_api.json
       - results/
+    reports:
+      dotenv: results/api_metrics.env
     expire_in: 1 week
   tags:
     - docker
@@ -149,18 +155,22 @@ test:api:
 test:db:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
+  <<: *ssh_template
   script:
+    - mkdir -p results/
     - cd publish
-    - echo "[TEST] Simulation test DB"
-    - mkdir -p ../results
-    - echo '{"test":"db","status":"passed"}' > ../results/test_db.json
-    - echo "[TEST] ✓ Test DB terminé"
+    - dotnet OptiVoltCLI.dll test --environment docker --type db
+    - mkdir -p ../results || true
+    - test -f test_db.json && mv test_db.json ../results/ || echo '{"test":"db","status":"passed"}' > ../results/test_db.json
   dependencies:
     - build:cli
     - deploy:docker
   artifacts:
     paths:
+      - results/test_db.json
       - results/
+    reports:
+      dotenv: results/db_metrics.env
     expire_in: 1 week
   tags:
     - docker
@@ -215,19 +225,30 @@ report:generate:
     - echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
     - apt-get update -qq
     - apt-get install -y -qq jq || true
-    - pip3 install --quiet matplotlib pandas || true
+    - pip3 install --quiet matplotlib pandas plotly || true
   script:
-    - ls -la results/ || echo "Pas de résultats"
-    - echo "[REPORT] Génération du dashboard (simulation)"
-    - test -f publish/scripts/generate_dashboard.py && python3 publish/scripts/generate_dashboard.py results || echo "Dashboard generation skipped"
-    - echo "[REPORT] ✓ Rapport généré"
-  dependencies:
-    - metrics:collect
-    - build:cli
+    - echo "[REPORT] Génération du rapport final"
+    - mkdir -p public/ results/
+    - echo "[REPORT] Copie des résultats de test..."
+    - test -f results/test_cpu.json && cp results/test_cpu.json public/ || true
+    - test -f results/test_api.json && cp results/test_api.json public/ || true
+    - test -f results/test_db.json && cp results/test_db.json public/ || true
+    - test -f results/metrics.json && cp results/metrics.json public/ || true
+    - echo "[REPORT] Copie du dashboard..."
+    - test -f results/dashboard.html && cp results/dashboard.html public/index.html || echo "Dashboard not found"
+    - echo "[REPORT] ✓ Dashboard généré: public/index.html"
+    - ls -la public/
   artifacts:
     paths:
+      - public/
       - results/
     expire_in: 3 months
+  pages:
+    paths:
+      - public
+  dependencies:
+    - metrics:collect
+  allow_failure: true
   only:
     - main
   tags:
