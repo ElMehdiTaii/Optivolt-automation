@@ -93,13 +93,10 @@ deploy:unikernel:
   <<: *ssh_template
   script:
     - cd publish
-    - rm -rf /root/optivolt-automation || true
-    - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
-    - test -f /root/optivolt-automation/config/hosts.json && echo "Config OK" || (echo "Config missing" && ls -la config && exit 1)
-    - echo "[DEPLOY] Lecture de la configuration..."
-    - cat config/hosts.json
-    - echo "[DEPLOY] Lancement du déploiement unikernel..."
-    - dotnet OptiVoltCLI.dll deploy --environment unikernel || echo "[DEPLOY] ⚠ Déploiement simulé (pas d'hôte distant disponible)"
+    - echo "[DEPLOY] Configuration hosts.json:"
+    - cat config/hosts.json | grep -A 5 "unikernel"
+    - echo "[DEPLOY] Lancement du déploiement..."
+    - dotnet OptiVoltCLI.dll deploy --environment unikernel --config config/hosts.json || true
   dependencies:
     - build:cli
     - deploy:docker
