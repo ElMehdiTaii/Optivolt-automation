@@ -49,16 +49,17 @@ build:cli:
 deploy:docker:
   stage: deploy
   image: docker:24-dind
-  <<: *ssh_template
   services:
     - docker:24-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_VERIFY: ""
   script:
     - cd publish
     - rm -rf /root/optivolt-automation || true
     - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
     - test -f /root/optivolt-automation/config/hosts.json && echo "Config OK" || (echo "Config missing" && ls -la config && exit 1)
-    - chmod +x scripts/deploy_docker.sh
-    - bash scripts/deploy_docker.sh /tmp/optivolt-tests
+    - dotnet OptiVoltCLI.dll deploy --environment docker || true
   dependencies:
     - build:cli
   only:
