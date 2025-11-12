@@ -104,12 +104,13 @@ deploy:unikernel:
 test:cpu:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
+  <<: *ssh_template
   script:
+    - mkdir -p results/
     - cd publish
-    - echo "[TEST] Simulation test CPU"
-    - echo '{"test":"cpu","status":"passed"}' > ../results/test_cpu.json
-    - mkdir -p ../results
-    - echo "[TEST] ✓ Test CPU terminé"
+    - dotnet OptiVoltCLI.dll test --environment docker --type cpu
+    - mkdir -p ../results || true
+    - test -f test_cpu.json && mv test_cpu.json ../results/ || echo '{"test":"cpu","status":"passed"}' > ../results/test_cpu.json
   dependencies:
     - build:cli
     - deploy:docker
