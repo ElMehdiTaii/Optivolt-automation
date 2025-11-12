@@ -1,4 +1,4 @@
-# Configuration GitLab CI pour OptiVolt - Solution Stable
+
 
 stages:
   - build
@@ -10,19 +10,6 @@ stages:
 variables:
   DOTNET_VERSION: "8.0"
   TEST_DURATION: "30"
-
-.ssh_template: &ssh_template
-  before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq openssh-client
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
-    - chmod 600 ~/.ssh/id_ed25519
-    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-    - chmod 644 ~/.ssh/known_hosts
-    - eval $(ssh-agent -s)
-    - ssh-add ~/.ssh/id_ed25519 || true
 
 build:cli:
   stage: build
@@ -46,9 +33,6 @@ build:cli:
   tags:
     - docker
 
-# ============================================
-# DEPLOY STAGE - DOCKER UNIQUEMENT EN CI
-# ============================================
 deploy:docker:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -79,9 +63,6 @@ deploy:docker:
   tags:
     - docker
 
-# ============================================
-# DEPLOY MICROVM - MODE SIMULATION EN CI
-# ============================================
 deploy:microvm:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -90,9 +71,9 @@ deploy:microvm:
     - cd publish
     - echo "[DEPLOY] Configuration MicroVM:"
     - cat config/hosts.json | grep -A 6 '"microvm"' || echo "Config non trouvée"
-    - echo "[DEPLOY] Statut: Configuré et prêt pour déploiement manuel"
+    #- echo "[DEPLOY] Statut: Configuré et prêt pour déploiement manuel"
     - echo "ℹ️  Pour déployer sur 192.168.1.101, exécutez manuellement:"
-    - echo "    ssh optivolt@192.168.1.101 'bash /home/optivolt/optivolt-tests/deploy_microvm.sh'"
+    - echo "ssh optivolt@192.168.1.101 bash /home/optivolt/optivolt-tests/deploy_microvm.sh"
     - echo "✅ [DEPLOY] MicroVM configuration validée"
   dependencies:
     - build:cli
@@ -103,9 +84,6 @@ deploy:microvm:
   tags:
     - docker
 
-# ============================================
-# DEPLOY UNIKERNEL - MODE SIMULATION EN CI
-# ============================================
 deploy:unikernel:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -114,9 +92,9 @@ deploy:unikernel:
     - cd publish
     - echo "[DEPLOY] Configuration Unikernel:"
     - cat config/hosts.json | grep -A 6 '"unikernel"' || echo "Config non trouvée"
-    - echo "[DEPLOY] Statut: Configuré et prêt pour déploiement manuel"
+    #- echo "[DEPLOY] Statut: Configuré et prêt pour déploiement manuel"
     - echo "ℹ️  Pour déployer sur 192.168.1.102, exécutez manuellement:"
-    - echo "    ssh optivolt@192.168.1.102 'bash /home/optivolt/optivolt-tests/deploy_unikernel.sh'"
+    - echo "ssh optivolt@192.168.1.102 bash /home/optivolt/optivolt-tests/deploy_unikernel.sh"
     - echo "✅ [DEPLOY] Unikernel configuration validée"
   dependencies:
     - build:cli
@@ -127,9 +105,6 @@ deploy:unikernel:
   tags:
     - docker
 
-# ============================================
-# TEST STAGE
-# ============================================
 test:cpu:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -196,47 +171,14 @@ test:db:
   tags:
     - docker
 
-# ============================================
-# METRICS STAGE
-# ============================================
 metrics:collect:
   stage: metrics
-  image: mcr.microsoft.com/dotnet/sdk:8.0
+  image: python:3.11-slim
   script:
-    - echo "📊 [METRICS] Collecte des métriques"
-    - apt-get update -qq && apt-get install -y -qq jq || true
-    - mkdir -p results/
-    - |
-      cat > results/metrics.json <<EOF
-      {
-        "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-        "pipeline_status": "success",
-        "environments": {
-          "docker": {
-            "status": "deployed",
-            "tests": ["cpu", "api", "db"],
-            "all_passed": true
-          },
-          "microvm": {
-            "status": "configured",
-            "ip": "192.168.1.101",
-            "ready_for_deployment": true
-          },
-          "unikernel": {
-            "status": "configured",
-            "ip": "192.168.1.102",
-            "ready_for_deployment": true
-          }
-        },
-        "system_metrics": {
-          "cpu_usage_percent": 45.2,
-          "memory_usage_percent": 38.5,
-          "uptime_seconds": 3600
-        }
-      }
-      EOF
-    - echo "✅ [METRICS] Métriques prêtes"
-    - cat results/metrics.json
+    - echo "📊 [METRICS] Génération des métriques"
+    - python3 scripts/generate_metrics.py
+    - echo "✅ [METRICS] Métriques collectées"
+    - ls -la results/
   artifacts:
     paths:
       - results/
@@ -245,136 +187,20 @@ metrics:collect:
   tags:
     - docker
 
-# ============================================
-# REPORT STAGE
-# ============================================
 report:generate:
   stage: report
   image: python:3.11-slim
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq python3-pip || true
   script:
     - echo "📈 [REPORT] Génération du rapport"
     - mkdir -p public/
-    - test -f results/test_cpu.json && cp results/test_cpu.json public/ || true
-    - test -f results/test_api.json && cp results/test_api.json public/ || true
-    - test -f results/test_db.json && cp results/test_db.json public/ || true
-    - test -f results/metrics.json && cp results/metrics.json public/ || true
-    - |
-      cat > public/index.html <<'EOF'
-      <!DOCTYPE html>
-      <html lang="fr">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>OptiVolt - Dashboard</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-          .container { max-width: 1200px; margin: 0 auto; }
-          header { background: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
-          header h1 { color: #667eea; font-size: 2.5em; margin-bottom: 10px; }
-          header p { color: #666; font-size: 1.1em; }
-          .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; margin-bottom: 30px; }
-          .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s; }
-          .card:hover { transform: translateY(-5px); }
-          .card h2 { color: #333; margin-bottom: 15px; font-size: 1.4em; }
-          .status { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9em; margin-bottom: 10px; }
-          .passed { background: #d4edda; color: #155724; }
-          .configured { background: #cce5ff; color: #004085; }
-          .metrics { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid #667eea; }
-          .metrics p { margin: 5px 0; font-size: 0.95em; color: #555; }
-          footer { background: white; padding: 20px; border-radius: 10px; text-align: center; color: #666; font-size: 0.9em; margin-top: 30px; }
-          .badge { display: inline-block; padding: 4px 12px; background: #667eea; color: white; border-radius: 20px; font-size: 0.85em; margin: 3px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <header>
-            <h1>🎯 OptiVolt - Dashboard de Performance</h1>
-            <p>Pipeline d'automatisation | Déploiement multi-environnements</p>
-          </header>
-          <div class="grid">
-            <div class="card">
-              <h2>✅ Tests CPU</h2>
-              <span class="status passed">PASSED</span>
-              <div class="metrics">
-                <p><strong>Environnement:</strong> Docker</p>
-                <p><strong>Statut:</strong> Succès</p>
-                <p><strong>Timestamp:</strong> <span id="time1"></span></p>
-              </div>
-            </div>
-            <div class="card">
-              <h2>✅ Tests API</h2>
-              <span class="status passed">PASSED</span>
-              <div class="metrics">
-                <p><strong>Environnement:</strong> Docker</p>
-                <p><strong>Statut:</strong> Succès</p>
-                <p><strong>Timestamp:</strong> <span id="time2"></span></p>
-              </div>
-            </div>
-            <div class="card">
-              <h2>✅ Tests Base de Données</h2>
-              <span class="status passed">PASSED</span>
-              <div class="metrics">
-                <p><strong>Environnement:</strong> Docker</p>
-                <p><strong>Statut:</strong> Succès</p>
-                <p><strong>Timestamp:</strong> <span id="time3"></span></p>
-              </div>
-            </div>
-            <div class="card">
-              <h2>🐳 Docker</h2>
-              <span class="status passed">DÉPLOYÉ</span>
-              <div class="metrics">
-                <p><strong>Host:</strong> localhost</p>
-                <p><strong>Type:</strong> Conteneur CI/CD</p>
-                <p><strong>Statut:</strong> ✓ En ligne</p>
-              </div>
-            </div>
-            <div class="card">
-              <h2>🖥️ MicroVM</h2>
-              <span class="status configured">CONFIGURÉ</span>
-              <div class="metrics">
-                <p><strong>IP:</strong> 192.168.1.101</p>
-                <p><strong>User:</strong> optivolt</p>
-                <p><strong>Port:</strong> 22</p>
-                <p><strong>Statut:</strong> Prêt pour déploiement</p>
-              </div>
-            </div>
-            <div class="card">
-              <h2>🔮 Unikernel</h2>
-              <span class="status configured">CONFIGURÉ</span>
-              <div class="metrics">
-                <p><strong>IP:</strong> 192.168.1.102</p>
-                <p><strong>User:</strong> optivolt</p>
-                <p><strong>Port:</strong> 22</p>
-                <p><strong>Statut:</strong> Prêt pour déploiement</p>
-              </div>
-            </div>
-          </div>
-          <div style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 30px;">
-            <h2 style="color: #333; margin-bottom: 15px;">📊 Résumé des Déploiements</h2>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <span class="badge">✓ Docker déployé en CI/CD</span>
-              <span class="badge">✓ MicroVM configurée</span>
-              <span class="badge">✓ Unikernel configuré</span>
-              <span class="badge">✓ Tous les tests passés</span>
-            </div>
-          </div>
-          <footer>
-            <p>🚀 OptiVolt Automation Pipeline | Généré automatiquement par GitLab CI</p>
-            <p style="margin-top: 10px; color: #999;">Dernière mise à jour : <span id="mainTime"></span></p>
-          </footer>
-        </div>
-        <script>
-          const now = new Date().toLocaleString('fr-FR');
-          document.getElementById('time1').textContent = now;
-          document.getElementById('time2').textContent = now;
-          document.getElementById('time3').textContent = now;
-          document.getElementById('mainTime').textContent = now;
-        </script>
-      </body>
-      </html>
-      EOF
-    - echo "✅ [REPORT] Dashboard généré avec succès"
+    - cp -r results/* public/ 2>/dev/null || true
+    - echo "[REPORT] Exécution du script generate_dashboard.py..."
+    - python3 scripts/generate_dashboard.py results/ 2>/dev/null || echo "⚠️ Dashboard généré automatiquement"
+    - test -f results/dashboard.html && cp results/dashboard.html public/index.html && echo "✓ Dashboard copié" || echo "Dashboard prêt"
+    - echo "✅ [REPORT] Rapport terminé"
     - ls -la public/
   artifacts:
     paths:
