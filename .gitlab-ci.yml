@@ -71,32 +71,34 @@ deploy:docker:
 deploy:microvm:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
+  <<: *ssh_template
   script:
     - cd publish
-    - echo "[CI/CD] Simulation du déploiement MicroVM"
-    - chmod +x scripts/deploy_microvm.sh
-    - bash scripts/deploy_microvm.sh /tmp/optivolt-tests
+    - dotnet OptiVoltCLI.dll deploy --environment microvm
   dependencies:
     - build:cli
+    - deploy:docker
   only:
     - main
   when: manual
+  allow_failure: true
   tags:
     - docker
 
 deploy:unikernel:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
+  <<: *ssh_template
   script:
     - cd publish
-    - echo "[CI/CD] Simulation du déploiement Unikernel"
-    - chmod +x scripts/deploy_unikernel.sh
-    - bash scripts/deploy_unikernel.sh /tmp/optivolt-tests
+    - dotnet OptiVoltCLI.dll deploy --environment unikernel
   dependencies:
     - build:cli
+    - deploy:docker
   only:
     - main
   when: manual
+  allow_failure: true
   tags:
     - docker
 
