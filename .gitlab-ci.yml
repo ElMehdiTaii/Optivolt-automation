@@ -46,16 +46,19 @@ build:cli:
     expire_in: 1 hour
   tags: [docker]
 
-# ✅ Déploiement en mode simulation (sans SSH)
 deploy:docker:
   stage: deploy
-  image: mcr.microsoft.com/dotnet/sdk:8.0
+  image: docker:24-dind
+  <<: *ssh_template
+  services:
+    - docker:24-dind
   script:
     - cd publish
-    - echo "[CI/CD] Simulation du déploiement Docker"
+    - rm -rf /root/optivolt-automation || true
+    - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
+    - test -f /root/optivolt-automation/config/hosts.json && echo "Config OK" || (echo "Config missing" && ls -la config && exit 1)
     - chmod +x scripts/deploy_docker.sh
     - bash scripts/deploy_docker.sh /tmp/optivolt-tests
-    - echo "[CI/CD] ✓ Déploiement simulé avec succès"
   dependencies:
     - build:cli
   only:
