@@ -74,6 +74,9 @@ deploy:microvm:
   <<: *ssh_template
   script:
     - cd publish
+    - rm -rf /root/optivolt-automation || true
+    - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
+    - test -f /root/optivolt-automation/config/hosts.json && echo "Config OK" || (echo "Config missing" && ls -la config && exit 1)
     - dotnet OptiVoltCLI.dll deploy --environment microvm
   dependencies:
     - build:cli
@@ -90,6 +93,9 @@ deploy:unikernel:
   <<: *ssh_template
   script:
     - cd publish
+    - rm -rf /root/optivolt-automation || true
+    - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
+    - test -f /root/optivolt-automation/config/hosts.json && echo "Config OK" || (echo "Config missing" && ls -la config && exit 1)
     - dotnet OptiVoltCLI.dll deploy --environment unikernel
   dependencies:
     - build:cli
