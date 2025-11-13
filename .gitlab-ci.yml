@@ -40,9 +40,13 @@ deploy:docker:
   before_script:
     # Installer Docker CLI si nécessaire
     - apt-get update -qq
-    - apt-get install -y -qq docker.io || echo "Docker déjà installé"
+    - apt-get install -y -qq docker.io
     - docker --version
-    - docker info || echo "Docker daemon accessible via socket"
+    # Vérifier l'accès au socket Docker
+    - ls -la /var/run/docker.sock || echo "⚠️ Socket Docker non monté"
+    - test -S /var/run/docker.sock && chmod 666 /var/run/docker.sock || echo "⚠️ Impossible de modifier les permissions"
+    # Test de connexion Docker
+    - docker info || echo "⚠️ Docker daemon non accessible"
   script:
     - echo "========================================="
     - echo "🐳 [DEPLOY] Déploiement Docker RÉEL"
@@ -53,6 +57,9 @@ deploy:docker:
     - test -f /root/optivolt-automation/config/hosts.json && echo "✓ Config trouvée" || (echo "✗ Config manquante" && exit 1)
     - echo ""
     - echo "[DEPLOY] Exécution du déploiement Docker RÉEL..."
+    - echo "[DEBUG] Vérification Docker avant déploiement:"
+    - docker ps 2>&1 || echo "⚠️ docker ps a échoué"
+    - echo ""
     - dotnet OptiVoltCLI.dll deploy --environment docker
     - echo ""
     - echo "========================================="
