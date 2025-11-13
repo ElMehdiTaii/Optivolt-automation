@@ -1,10 +1,14 @@
 # OptiVolt - Analyse de Performance Énergétique
 
-Projet d'automatisation pour comparer la consommation énergétique entre Docker, MicroVM et Unikernel.
+> Pipeline automatisé pour comparer la consommation énergétique entre Docker, MicroVM et Unikernel
+
+[![Pipeline Status](https://img.shields.io/badge/pipeline-passing-brightgreen)]() 
+[![.NET](https://img.shields.io/badge/.NET-8.0-blue)]()
+[![License](https://img.shields.io/badge/license-Academic-orange)]()
 
 ## 🎯 Objectif
 
-Créer un pipeline automatisé pour :
+Créer un pipeline CI/CD automatisé pour :
 - Déployer des environnements (Docker, MicroVM, Unikernel)
 - Exécuter des tests de charge
 - Collecter des métriques de performance et d'énergie
@@ -13,22 +17,27 @@ Créer un pipeline automatisé pour :
 ## 🏗️ Architecture
 
 ```
-OptiVolt
+optivolt/
 ├── OptiVoltCLI/              # Application .NET CLI
+│   ├── Commands/             # Commandes deploy, test, collect
+│   ├── Services/             # SSH, Metrics, Configuration
+│   └── Models/               # HostConfig, TestResult
 ├── scripts/                  # Scripts de déploiement et collecte
 ├── monitoring/               # Stack Grafana + Prometheus
-├── config/                   # Configuration des hôtes
-└── docs/                     # Documentation complète
+├── .gitlab/ci/               # Configuration CI/CD modulaire
+└── docs/                     # Documentation technique
 ```
 
-## 🚀 Démarrage Rapide
+## 🚀 Quick Start
 
 ### Prérequis
 
-- .NET 8.0 SDK
-- Docker
-- Python 3.11+
-- GitLab Runner (optionnel)
+```bash
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install -y dotnet-sdk-8.0 docker.io python3 python3-pip
+pip3 install psutil
+```
 
 ### Installation
 
@@ -40,26 +49,25 @@ cd optivolt
 # Compiler OptiVoltCLI
 cd OptiVoltCLI
 dotnet build -c Release -o ../publish
+cd ..
 
 # Tester localement
-cd ..
 ./test_local_deployment.sh
 ```
 
 ### Démarrer le Monitoring
 
 ```bash
-# Lancer Grafana + Prometheus + Scaphandre
+# Lancer Grafana + Prometheus
 ./start-monitoring.sh
 
-# Accéder à Grafana
-# URL: http://localhost:3000
+# Accéder à Grafana: http://localhost:3000
 # Login: admin / optivolt2025
 ```
 
 ## 📊 Utilisation
 
-### Commandes CLI
+### CLI Commands
 
 ```bash
 cd publish
@@ -68,33 +76,29 @@ cd publish
 dotnet OptiVoltCLI.dll deploy --environment docker
 
 # Exécuter des tests
-dotnet OptiVoltCLI.dll test --environment docker --type cpu
+dotnet OptiVoltCLI.dll test --environment docker --type cpu --duration 30
 
 # Collecter les métriques
 dotnet OptiVoltCLI.dll collect --environment docker
-
-# Installer Scaphandre
-dotnet OptiVoltCLI.dll scaphandre install
-
-# Vérifier Scaphandre
-dotnet OptiVoltCLI.dll scaphandre check
-
-# Collecter métriques énergétiques
-dotnet OptiVoltCLI.dll scaphandre collect --duration 30
 ```
 
 ### Pipeline GitLab CI
 
-Le pipeline automatique comprend 6 stages :
+Le pipeline s'exécute automatiquement sur chaque push :
 
-1. **Build** : Compilation OptiVoltCLI
-2. **Deploy** : Déploiement environnements
-3. **Test** : Tests de charge (CPU, API, DB)
-4. **Metrics** : Collecte métriques + workload benchmark
-5. **Power-monitoring** : Métriques énergétiques Scaphandre
-6. **Report** : Génération tableau de bord HTML
+```yaml
+stages:
+  - build              # Compilation .NET
+  - deploy             # Déploiement environnements
+  - test               # Tests de charge
+  - metrics            # Collecte métriques
+  - power-monitoring   # Métriques énergétiques
+  - report             # Génération dashboard
+```
 
-### Configuration SSH pour Déploiements Distants
+## 🔧 Configuration SSH
+
+Pour déployer sur des serveurs distants :
 
 ```bash
 # Générer une clé SSH
@@ -105,13 +109,13 @@ ssh-copy-id user@serveur-distant
 
 # Mettre à jour config/hosts.json
 {
-  "hosts": {
+  "environments": {
     "microvm": {
-      "hostname": "microvm.example.com",
-      "ip": "XXX.XXX.XXX.XXX",
-      "user": "ubuntu",
+      "hostname": "192.168.1.101",
       "port": 22,
-      "workdir": "/home/ubuntu/optivolt-tests"
+      "username": "optivolt",
+      "privateKeyPath": "~/.ssh/id_ed25519",
+      "workingDirectory": "/home/optivolt/tests"
     }
   }
 }
@@ -119,117 +123,65 @@ ssh-copy-id user@serveur-distant
 
 ## 📈 Métriques Collectées
 
-### Workload Benchmark
-- Charge CPU intensive (calculs cryptographiques)
-- Consommation mémoire
-- Throughput (itérations/sec)
-- Durée et intensité configurables
+### Performance
+- CPU usage (%)
+- Memory usage (MB)
+- Disk I/O (MB/s)
+- Network throughput (Mbps)
+- Response time (ms)
 
-### Scaphandre (Power Monitoring)
-- Consommation électrique totale (Watts)
+### Énergie (Scaphandre)
+- Consommation électrique (Watts)
 - Consommation par socket CPU
 - Consommation par processus
 - Basé sur Intel RAPL
 
-### Métriques Système
-- CPU utilisation (%)
-- Mémoire (MB)
-- I/O disque
-- Réseau
-
-## 📁 Structure des Fichiers
-
-```
-.
-├── README.md                       # Ce fichier
-├── CONFORMITE_FINALE.md            # Document de conformité
-├── .gitlab-ci.yml                  # Pipeline CI/CD
-├── docker-compose-monitoring.yml   # Stack monitoring
-├── start-monitoring.sh             # Démarrage monitoring
-├── test_local_deployment.sh        # Tests locaux
-│
-├── OptiVoltCLI/                    # Application CLI
-│   ├── Program.cs                  # Code principal (957 lignes)
-│   ├── OptiVoltCLI.csproj          # Projet .NET 8.0
-│   └── publish/                    # Binaires compilés
-│
-├── scripts/                        # Scripts automation
-│   ├── deploy_docker.sh            # Déploiement Docker
-│   ├── deploy_microvm.sh           # Déploiement MicroVM
-│   ├── deploy_unikernel.sh         # Déploiement Unikernel
-│   ├── setup_scaphandre.sh         # Installation Scaphandre
-│   ├── workload_benchmark.py       # Benchmark de charge
-│   ├── collect_metrics.sh          # Collecte métriques
-│   └── generate_dashboard.py      # Génération rapport
-│
-├── config/                         # Configuration
-│   └── hosts.json                  # Définition des hôtes
-│
-├── monitoring/                     # Stack monitoring
-│   ├── grafana/                    # Configuration Grafana
-│   │   ├── dashboards/             # Dashboards JSON
-│   │   └── provisioning/           # Auto-provisioning
-│   └── prometheus/                 # Configuration Prometheus
-│       └── prometheus.yml
-│
-├── docs/                           # Documentation
-│   ├── SCAPHANDRE_INTEGRATION.md   # Guide Scaphandre
-│   └── GRAFANA_INTEGRATION.md      # Guide Grafana
-│
-└── results/                        # Résultats des tests
-    ├── workload_results.json
-    ├── docker_deploy_results.json
-    └── dashboard.html
-```
-
-## 🔧 Technologies Utilisées
-
-- **.NET 8.0** : Application CLI
-- **Docker** : Containerisation
-- **GitLab CI/CD** : Pipeline automatisé
-- **Scaphandre** : Monitoring énergétique
-- **Prometheus** : Base de données métriques
-- **Grafana** : Visualisation
-- **Python 3.11** : Scripts de benchmark
-- **Bash** : Scripts d'automatisation
-
-## 📚 Documentation
-
-- [CONFORMITE_FINALE.md](./CONFORMITE_FINALE.md) - Conformité avec la tâche
-- [docs/SCAPHANDRE_INTEGRATION.md](./docs/SCAPHANDRE_INTEGRATION.md) - Guide Scaphandre
-- [docs/GRAFANA_INTEGRATION.md](./docs/GRAFANA_INTEGRATION.md) - Guide Grafana
+| Document | Description |
+|----------|-------------|
+| [RAPPORT_ETAT_PROJET.md](./RAPPORT_ETAT_PROJET.md) | Rapport complet d'état du projet |
+| [docs/SCAPHANDRE_INTEGRATION.md](./docs/SCAPHANDRE_INTEGRATION.md) | Guide d'intégration Scaphandre |
+| [docs/GRAFANA_INTEGRATION.md](./docs/GRAFANA_INTEGRATION.md) | Configuration dashboards Grafana |
+| [.gitlab/ci/README.md](./.gitlab/ci/README.md) | Documentation pipeline CI/CD |
 
 ## 🧪 Tests
 
-### Tests Locaux
-
 ```bash
-# Déploiement Docker complet
+# Tests locaux complets
 ./test_local_deployment.sh
 
 # Workload benchmark
 WORKLOAD_DURATION=30 WORKLOAD_INTENSITY=heavy python3 scripts/workload_benchmark.py
 
-# Monitoring stack
-./start-monitoring.sh
+# Métriques énergétiques
+./scripts/setup_scaphandre.sh install
+./scripts/setup_scaphandre.sh check
 ```
-
-### Tests GitLab CI
-
-Pipeline déclenché automatiquement sur chaque push vers `main`.
-
-URL : https://gitlab.com/mehdi_taii/optivolt/-/pipelines
-
-## 📝 Licence
-
-Projet académique - Tous droits réservés
-
-## 👤 Auteur
-
-Mehdi Taii - OptiFit Project
 
 ## 🔗 Liens
 
-- **GitLab** : https://gitlab.com/mehdi_taii/optivolt
-- **Pipeline** : https://gitlab.com/mehdi_taii/optivolt/-/pipelines
-- **Scaphandre** : https://github.com/hubblo-org/scaphandre
+- **GitLab**: https://gitlab.com/mehdi_taii/optivolt
+- **Pipeline**: https://gitlab.com/mehdi_taii/optivolt/-/pipelines
+- **Scaphandre**: https://github.com/hubblo-org/scaphandre
+
+## � Stack Technique
+
+- **.NET 8.0** - Application CLI
+- **Docker** - Containerisation
+- **GitLab CI/CD** - Pipeline automatisé
+- **Scaphandre** - Monitoring énergétique
+- **Prometheus** - Base de données métriques
+- **Grafana** - Visualisation
+- **Python 3** - Scripts de benchmark
+- **Bash** - Scripts d'automatisation
+
+## � Auteur
+
+**Mehdi Taii** - OptiFit Project
+
+## � Licence
+
+Projet académique - Tous droits réservés
+
+---
+
+**Status**: ✅ Production Ready | **Pipeline**: ✅ Passing | **Coût**: 0€

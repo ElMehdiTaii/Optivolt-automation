@@ -1,152 +1,64 @@
-**Contenu du .gitignore** :
-```
-# ========================================
-# Résultats et logs OptiVolt
-# ========================================
+# ===============================================
+# OptiVolt - Fichiers à ignorer
+# ===============================================
+
+# Résultats et logs
 results/
 logs/
 *.log
+*.tmp
+*.temp
 
-# ========================================
-# Monitoring (Prometheus/Grafana data)
-# ========================================
+# Monitoring data
 monitoring/prometheus/data/
 monitoring/grafana/data/
 
-# ========================================
-# Dossiers externes / Submodules
-# ========================================
-scaphandre/
+# Backups et archives
+*.backup
+*.bak
+*.old
+*~
 
-# ========================================
-# .NET / C# Build Artifacts
-# ========================================
-# Build outputs
+# .NET Build
 bin/
 obj/
-[Bb]in/
-[Oo]bj/
+publish/
 [Dd]ebug/
 [Rr]elease/
 x64/
 x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]ld/
-
-# Visual Studio cache/options
-.vs/
 *.suo
 *.user
-*.userosscache
-*.sln.docstates
-*.userprefs
+.vs/
+*.csproj.user
 
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-build/
-[Bb]uild/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-
-# MSTest test Results
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-
-# .NET Core
-project.lock.json
-project.fragment.lock.json
-artifacts/
-
-# NuGet Packages
-*.nupkg
-*.snupkg
-**/packages/*
-!**/packages/build/
-*.nuget.props
-*.nuget.targets
-
-# Visual Studio profiler
-*.psess
-*.vsp
-*.vspx
-*.sap
-
-# Publish artifacts
-publish/
-*.publish.xml
-
-# ========================================
-# Scaphandre (Rust Build Artifacts)
-# ========================================
-scaphandre/target/
-scaphandre/Cargo.lock
-
-# ========================================
 # Python
-# ========================================
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
-.Python
-env/
 venv/
-ENV/
+env/
 *.egg-info/
-dist/
-*.egg
 
-# ========================================
-# IDE et Éditeurs
-# ========================================
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-.project
-.classpath
-.settings/
 
-# ========================================
 # OS
-# ========================================
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 Desktop.ini
 
-# ========================================
-# Secrets et Clés
-# ========================================
+# Secrets
 *.key
 *.pem
 *.pfx
-*.p12
-secrets/
 .env
 .env.local
+secrets/
 
-# ========================================
-# Temporaires
-# ========================================
-*.tmp
-*.temp
-*.bak
-*.cache
-*.swp
-*~
+# Submodules externes
+scaphandre/target/
+scaphandre/Cargo.lock
