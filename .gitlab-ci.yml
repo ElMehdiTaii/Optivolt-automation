@@ -56,27 +56,27 @@ deploy:docker:
     - echo "📊 [DEPLOY] Génération des métriques simulées..."
     - mkdir -p ../results
     - |
-      cat > ../results/docker_deploy_results.json << 'EOF'
+      cat > ../results/docker_deploy_results.json << EOF
       {
         "environment": "docker",
         "status": "validated",
-        "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+        "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
         "deployment": {
           "container_name": "optivolt-test-app",
           "cpu_limit": "1.5 cores",
           "memory_limit": "256MB",
           "network": "optivolt-net",
-          "note": "Configuration validée - Déploiement réel via runner privé ou SSH"
+          "note": "Configuration validee - Deploiement reel via runner prive ou SSH"
         },
         "validation": {
-          "code": "✅ Production-ready",
-          "scripts": "✅ deploy_docker.sh fonctionnel",
-          "cli": "✅ OptiVoltCLI.dll opérationnel",
-          "config": "✅ hosts.json configuré"
+          "code": "Production-ready",
+          "scripts": "deploy_docker.sh fonctionnel",
+          "cli": "OptiVoltCLI.dll operationnel",
+          "config": "hosts.json configure"
         },
         "next_steps": {
-          "option_1": "Configurer runner GitLab privé avec Docker privilégié",
-          "option_2": "Déployer via SSH vers serveur distant",
+          "option_1": "Configurer runner GitLab prive avec Docker privilegie",
+          "option_2": "Deployer via SSH vers serveur distant",
           "option_3": "Tester localement: ./test_local_deployment.sh"
         }
       }
