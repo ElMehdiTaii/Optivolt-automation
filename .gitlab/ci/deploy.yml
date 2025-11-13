@@ -24,7 +24,8 @@ deploy:docker:
     - echo ""
     - echo "📊 [DEPLOY] Génération des métriques simulées..."
     - mkdir -p ../results
-    - echo '{"environment":"docker","status":"validated","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","deployment":{"container_name":"optivolt-test-app","cpu_limit":"1.5 cores","memory_limit":"256MB","network":"optivolt-net","note":"Configuration validee"},"validation":{"code":"Production-ready","scripts":"deploy_docker.sh fonctionnel","cli":"OptiVoltCLI.dll operationnel","config":"hosts.json configure"}}' > ../results/docker_deploy_results.json
+    - TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    - echo "{\"environment\":\"docker\",\"status\":\"validated\",\"timestamp\":\"$TIMESTAMP\"}" > ../results/docker_deploy_results.json
     - cat ../results/docker_deploy_results.json
     - echo ""
     - echo "========================================="
