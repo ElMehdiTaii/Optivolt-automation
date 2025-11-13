@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # Scaphandre - Collecteur de métriques énergétiques
+  scaphandre:
+    image: hubblo/scaphandre:latest
+    container_name: optivolt-scaphandre
+    command: prometheus
+    ports:
+      - "8080:8080"
+    volumes:
+      - /sys/class/powercap:/sys/class/powercap:ro
+      - /proc:/proc:ro
+    privileged: true
+    restart: unless-stopped
+    networks:
+      - optivolt-monitoring
+
+  # Prometheus - Base de données de métriques
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: optivolt-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - optivolt-monitoring
+    depends_on:
+      - scaphandre
+
+  # Grafana - Visualisation
+  grafana:
+    image: grafana/grafana:latest
+    container_name: optivolt-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=optivolt2025
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    restart: unless-stopped
+    networks:
+      - optivolt-monitoring
+    depends_on:
+      - prometheus
+
+  # Node Exporter - Métriques système
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: optivolt-node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro,rslave
+    restart: unless-stopped
+    networks:
+      - optivolt-monitoring
+
+  # cAdvisor - Métriques Docker
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: optivolt-cadvisor
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    restart: unless-stopped
+    networks:
+      - optivolt-monitoring
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  optivolt-monitoring:
+    driver: bridge

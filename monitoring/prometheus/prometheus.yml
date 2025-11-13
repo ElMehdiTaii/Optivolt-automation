@@ -1,0 +1,80 @@
+# Prometheus Configuration for OptiVolt Monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'optivolt'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Rule files (for alerts)
+# rule_files:
+#   - '/etc/prometheus/alerts/*.yml'
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Scaphandre - Power consumption metrics
+  - job_name: 'scaphandre'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['scaphandre:8080']
+        labels:
+          service: 'scaphandre'
+          type: 'power-monitoring'
+    metric_relabel_configs:
+      # Keep only scaphandre metrics
+      - source_labels: [__name__]
+        regex: 'scaph_.*'
+        action: keep
+
+  # Node Exporter - System metrics (CPU, RAM, Disk, Network)
+  - job_name: 'node-exporter'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+          type: 'system-monitoring'
+
+  # cAdvisor - Docker container metrics
+  - job_name: 'cadvisor'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+          type: 'container-monitoring'
+
+  # OptiVolt Test Applications (if exposed)
+  # - job_name: 'optivolt-docker'
+  #   static_configs:
+  #     - targets: ['172.17.0.1:8080']
+  #       labels:
+  #         environment: 'docker'
+  #         type: 'application'
+
+  # - job_name: 'optivolt-microvm'
+  #   static_configs:
+  #     - targets: ['192.168.1.101:8080']
+  #       labels:
+  #         environment: 'microvm'
+  #         type: 'application'
+
+  # - job_name: 'optivolt-unikernel'
+  #   static_configs:
+  #     - targets: ['192.168.1.102:8080']
+  #       labels:
+  #         environment: 'unikernel'
+  #         type: 'application'
