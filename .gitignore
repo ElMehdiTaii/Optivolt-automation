@@ -14,6 +14,11 @@ monitoring/prometheus/data/
 monitoring/grafana/data/
 
 # ========================================
+# Dossiers externes / Submodules
+# ========================================
+scaphandre/
+
+# ========================================
 # .NET / C# Build Artifacts
 # ========================================
 # Build outputs
