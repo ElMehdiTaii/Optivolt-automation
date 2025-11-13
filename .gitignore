@@ -1,27 +1,141 @@
 **Contenu du .gitignore** :
 ```
-# Résultats et logs
+# ========================================
+# Résultats et logs OptiVolt
+# ========================================
 results/
 logs/
-#*.json
 *.log
 
-# Build artifacts
-src/**/bin/
-src/**/obj/
-target/
-scaphandre/
+# ========================================
+# .NET / C# Build Artifacts
+# ========================================
+# Build outputs
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]ld/
 
-# IDE
+# Visual Studio cache/options
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+[Bb]uild/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Publish artifacts
+publish/
+*.publish.xml
+
+# ========================================
+# Scaphandre (Rust Build Artifacts)
+# ========================================
+scaphandre/target/
+scaphandre/Cargo.lock
+
+# ========================================
+# Python
+# ========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+*.egg
+
+# ========================================
+# IDE et Éditeurs
+# ========================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.project
+.classpath
+.settings/
 
+# ========================================
 # OS
+# ========================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
-# Secrets
+# ========================================
+# Secrets et Clés
+# ========================================
 *.key
 *.pem
+*.pfx
+*.p12
+secrets/
+.env
+.env.local
+
+# ========================================
+# Temporaires
+# ========================================
+*.tmp
+*.temp
+*.bak
+*.cache
+*.swp
+*~

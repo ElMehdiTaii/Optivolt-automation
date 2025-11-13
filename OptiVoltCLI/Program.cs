@@ -77,12 +77,50 @@ namespace OptiVoltCLI
                 ShowPipelines();
             });
 
+            // Commande: scaphandre (gestion de Scaphandre pour mesures énergétiques)
+            var scaphandreCommand = new Command("scaphandre", "Gestion de Scaphandre (monitoring énergétique)");
+            
+            var scaphInstallCmd = new Command("install", "Installe Scaphandre");
+            scaphInstallCmd.SetHandler(() =>
+            {
+                InstallScaphandre();
+            });
+            
+            var scaphCheckCmd = new Command("check", "Vérifie l'installation de Scaphandre");
+            scaphCheckCmd.SetHandler(() =>
+            {
+                CheckScaphandre();
+            });
+            
+            var scaphCollectCmd = new Command("collect", "Collecte les métriques de consommation");
+            var durationOption = new Option<int>(
+                "--duration",
+                description: "Durée de collecte en secondes",
+                getDefaultValue: () => 30
+            );
+            var outputOption = new Option<string>(
+                "--output",
+                description: "Fichier de sortie JSON",
+                getDefaultValue: () => "results/scaphandre_metrics.json"
+            );
+            scaphCollectCmd.AddOption(durationOption);
+            scaphCollectCmd.AddOption(outputOption);
+            scaphCollectCmd.SetHandler((int duration, string output) =>
+            {
+                CollectScaphandreMetrics(duration, output);
+            }, durationOption, outputOption);
+            
+            scaphandreCommand.AddCommand(scaphInstallCmd);
+            scaphandreCommand.AddCommand(scaphCheckCmd);
+            scaphandreCommand.AddCommand(scaphCollectCmd);
+
             rootCommand.AddCommand(deployCommand);
             rootCommand.AddCommand(testCommand);
             rootCommand.AddCommand(metricsCommand);
             rootCommand.AddCommand(reportCommand);
             rootCommand.AddCommand(statusCommand);
             rootCommand.AddCommand(pipesCommand);
+            rootCommand.AddCommand(scaphandreCommand);
 
             return await rootCommand.InvokeAsync(args);
         }
@@ -682,6 +720,238 @@ namespace OptiVoltCLI
             }
             
             Console.WriteLine("\n[REPORT] ✓ Rapport généré");
+        }
+
+        // ===== MÉTHODES SCAPHANDRE =====
+
+        static void InstallScaphandre()
+        {
+            Console.WriteLine("⚡ [SCAPHANDRE] Installation de Scaphandre...\n");
+            
+            string scriptPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "optivolt-automation", "scripts", "setup_scaphandre.sh"
+            );
+
+            if (!File.Exists(scriptPath))
+            {
+                scriptPath = Path.Combine(AppContext.BaseDirectory, "scripts", "setup_scaphandre.sh");
+            }
+
+            if (!File.Exists(scriptPath))
+            {
+                Console.WriteLine("[ERROR] Script setup_scaphandre.sh introuvable");
+                Console.WriteLine($"[ERROR] Recherché dans: {scriptPath}");
+                return;
+            }
+
+            try
+            {
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "/bin/bash",
+                        Arguments = $"{scriptPath} install",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    }
+                };
+
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                Console.WriteLine(output);
+                if (!string.IsNullOrEmpty(error))
+                {
+                    Console.WriteLine(error);
+                }
+
+                if (process.ExitCode == 0)
+                {
+                    Console.WriteLine("\n✅ [SCAPHANDRE] Installation terminée avec succès");
+                }
+                else
+                {
+                    Console.WriteLine($"\n⚠️  [SCAPHANDRE] Installation terminée avec des avertissements (code: {process.ExitCode})");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Erreur lors de l'installation: {ex.Message}");
+            }
+        }
+
+        static void CheckScaphandre()
+        {
+            Console.WriteLine("⚡ [SCAPHANDRE] Vérification de l'installation...\n");
+            
+            string scriptPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "optivolt-automation", "scripts", "setup_scaphandre.sh"
+            );
+
+            if (!File.Exists(scriptPath))
+            {
+                scriptPath = Path.Combine(AppContext.BaseDirectory, "scripts", "setup_scaphandre.sh");
+            }
+
+            if (!File.Exists(scriptPath))
+            {
+                Console.WriteLine("[ERROR] Script setup_scaphandre.sh introuvable");
+                return;
+            }
+
+            try
+            {
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "/bin/bash",
+                        Arguments = $"{scriptPath} check",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    }
+                };
+
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                Console.WriteLine(output);
+                if (!string.IsNullOrEmpty(error))
+                {
+                    Console.WriteLine(error);
+                }
+
+                Console.WriteLine("\n╔════════════════════════════════════════════════════════════════╗");
+                Console.WriteLine("║                   INFORMATIONS IMPORTANTES                     ║");
+                Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
+                Console.WriteLine("  • Scaphandre nécessite le support Intel RAPL");
+                Console.WriteLine("  • RAPL fonctionne uniquement sur CPU Intel (ou certains AMD récents)");
+                Console.WriteLine("  • Nécessite l'accès à /sys/class/powercap/");
+                Console.WriteLine("  • Peut nécessiter des privilèges root (sudo)");
+                Console.WriteLine("╚════════════════════════════════════════════════════════════════╝\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Erreur lors de la vérification: {ex.Message}");
+            }
+        }
+
+        static void CollectScaphandreMetrics(int duration, string outputFile)
+        {
+            Console.WriteLine($"⚡ [SCAPHANDRE] Collecte des métriques énergétiques...");
+            Console.WriteLine($"   Durée: {duration}s");
+            Console.WriteLine($"   Sortie: {outputFile}\n");
+            
+            string scriptPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "optivolt-automation", "scripts", "setup_scaphandre.sh"
+            );
+
+            if (!File.Exists(scriptPath))
+            {
+                scriptPath = Path.Combine(AppContext.BaseDirectory, "scripts", "setup_scaphandre.sh");
+            }
+
+            if (!File.Exists(scriptPath))
+            {
+                Console.WriteLine("[ERROR] Script setup_scaphandre.sh introuvable");
+                return;
+            }
+
+            // S'assurer que le répertoire de sortie existe
+            string outputDir = Path.GetDirectoryName(outputFile);
+            if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
+
+            try
+            {
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "/bin/bash",
+                        Arguments = $"{scriptPath} run {outputFile} {duration}",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    }
+                };
+
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                Console.WriteLine(output);
+                if (!string.IsNullOrEmpty(error))
+                {
+                    Console.WriteLine(error);
+                }
+
+                if (process.ExitCode == 0 && File.Exists(outputFile))
+                {
+                    Console.WriteLine($"\n✅ [SCAPHANDRE] Métriques collectées avec succès");
+                    Console.WriteLine($"   Fichier: {outputFile}");
+                    
+                    // Afficher un aperçu si possible
+                    try
+                    {
+                        string jsonContent = File.ReadAllText(outputFile);
+                        var metrics = JObject.Parse(jsonContent);
+                        
+                        if (metrics["available"] != null && metrics["available"].Value<bool>())
+                        {
+                            Console.WriteLine("\n╔════════════════════════════════════════╗");
+                            Console.WriteLine("║     MÉTRIQUES ÉNERGÉTIQUES             ║");
+                            Console.WriteLine("╚════════════════════════════════════════╝");
+                            
+                            if (metrics["host_power_watts"] != null)
+                            {
+                                Console.WriteLine($"  Consommation hôte: {metrics["host_power_watts"]} W");
+                            }
+                            
+                            if (metrics["socket_power_watts"] != null)
+                            {
+                                Console.WriteLine($"  Consommation socket: {metrics["socket_power_watts"]} W");
+                            }
+                            
+                            Console.WriteLine("╚════════════════════════════════════════╝\n");
+                        }
+                        else
+                        {
+                            Console.WriteLine("\n⚠️  [SCAPHANDRE] Métriques non disponibles");
+                            if (metrics["note"] != null)
+                            {
+                                Console.WriteLine($"   Raison: {metrics["note"]}");
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore parsing errors
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"\n⚠️  [SCAPHANDRE] Collecte terminée avec avertissements");
+                    Console.WriteLine("   Les métriques RAPL ne sont peut-être pas disponibles sur ce système");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Erreur lors de la collecte: {ex.Message}");
+            }
         }
     }
 }

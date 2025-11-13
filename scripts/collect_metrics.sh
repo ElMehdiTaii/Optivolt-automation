@@ -84,6 +84,59 @@ collect_docker_metrics() {
     fi
 }
 
+# Fonction pour collecter les métriques Scaphandre (consommation électrique réelle)
+collect_scaphandre_metrics() {
+    local SCAPH_OUTPUT="/tmp/scaphandre_temp.json"
+    
+    # Vérifier si Scaphandre est installé et disponible
+    if ! command -v scaphandre &> /dev/null; then
+        echo "{\"available\":false,\"note\":\"Scaphandre not installed. Run: scripts/setup_scaphandre.sh install\"}"
+        return
+    fi
+    
+    # Vérifier si RAPL est disponible
+    if [ ! -d "/sys/class/powercap/intel-rapl" ] && [ ! -d "/sys/class/powercap/intel-rapl:0" ]; then
+        echo "{\"available\":false,\"note\":\"Intel RAPL not available. CPU may not support power monitoring.\"}"
+        return
+    fi
+    
+    # Collecter les métriques pendant 5 secondes
+    timeout 5s scaphandre json -t 1 -s > "$SCAPH_OUTPUT" 2>/dev/null || {
+        echo "{\"available\":false,\"note\":\"Failed to collect Scaphandre metrics\"}"
+        rm -f "$SCAPH_OUTPUT"
+        return
+    }
+    
+    # Extraire les données principales si jq est disponible
+    if command -v jq &> /dev/null && [ -f "$SCAPH_OUTPUT" ] && [ -s "$SCAPH_OUTPUT" ]; then
+        # Extraire la consommation moyenne de l'hôte
+        HOST_POWER=$(jq -r '.host.consumption // 0' "$SCAPH_OUTPUT" 2>/dev/null || echo "0")
+        SOCKET_POWER=$(jq -r '.host.socket_stats[0].socket_power_microwatts // 0' "$SCAPH_OUTPUT" 2>/dev/null || echo "0")
+        
+        # Convertir microwatts en watts si nécessaire
+        if [ "$SOCKET_POWER" != "0" ] && [ "$SOCKET_POWER" != "null" ]; then
+            SOCKET_POWER=$(awk "BEGIN {printf \"%.2f\", $SOCKET_POWER / 1000000}")
+        else
+            SOCKET_POWER="0"
+        fi
+        
+        # Obtenir les top processus consommateurs
+        TOP_PROCESSES=$(jq -c '[.consumers[0:5] | .[] | {pid: .pid, exe: .exe, power_w: .consumption}]' "$SCAPH_OUTPUT" 2>/dev/null || echo "[]")
+        
+        echo "{\"available\":true,\"host_power_watts\":$HOST_POWER,\"socket_power_watts\":$SOCKET_POWER,\"top_consumers\":$TOP_PROCESSES}"
+    else
+        # Sans jq, retourner une version simplifiée
+        if [ -f "$SCAPH_OUTPUT" ] && [ -s "$SCAPH_OUTPUT" ]; then
+            echo "{\"available\":true,\"note\":\"Metrics collected but jq not available for parsing\",\"raw_file\":\"$SCAPH_OUTPUT\"}"
+        else
+            echo "{\"available\":false,\"note\":\"No metrics collected\"}"
+        fi
+    fi
+    
+    # Nettoyer le fichier temporaire
+    rm -f "$SCAPH_OUTPUT"
+}
+
 # Collecte périodique
 echo "[METRICS] Surveillance en cours pendant ${DURATION}s..."
 SAMPLES=()
@@ -98,6 +151,11 @@ for i in $(seq 1 $NUM_SAMPLES); do
 done
 
 DOCKER_METRICS=$(collect_docker_metrics)
+
+# Collecter les métriques Scaphandre (énergie réelle)
+echo "[METRICS] Collecte des métriques de consommation électrique (Scaphandre)..."
+SCAPHANDRE_METRICS=$(collect_scaphandre_metrics)
+
 END_TIME=$(date +%s)
 ACTUAL_DURATION=$((END_TIME - START_TIME))
 
@@ -141,8 +199,8 @@ cat > $OUTPUT_FILE <<EOF
     "samples": [$(IFS=,; echo "${SAMPLES[*]}")]
   },
   "energy_metrics": {
-    "note": "Energy metrics not available in VirtualBox",
-    "estimated_power_w": null
+    "note": "Real power consumption measured by Scaphandre (if available)",
+    "scaphandre": $SCAPHANDRE_METRICS
   },
   "container_metrics": $DOCKER_METRICS
 }

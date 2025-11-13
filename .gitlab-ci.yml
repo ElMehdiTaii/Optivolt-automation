@@ -5,6 +5,7 @@ stages:
   - deploy
   - test
   - metrics
+  - power-monitoring
   - report
 
 variables:
@@ -183,6 +184,54 @@ metrics:collect:
     paths:
       - results/
     expire_in: 1 month
+  allow_failure: true
+  tags:
+    - docker
+
+# Nouveau stage: Monitoring de la consommation électrique avec Scaphandre
+power:scaphandre-setup:
+  stage: power-monitoring
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq wget tar sudo
+  script:
+    - echo "⚡ [POWER] Installation de Scaphandre"
+    - chmod +x scripts/setup_scaphandre.sh
+    - ./scripts/setup_scaphandre.sh check || echo "RAPL non disponible dans GitLab CI"
+    - echo "ℹ️  [POWER] Scaphandre est configuré pour les runners bare-metal"
+    - echo "ℹ️  [POWER] Dans GitLab CI, les métriques RAPL ne sont disponibles que sur des runners physiques"
+    - echo "✅ [POWER] Setup vérifié"
+  allow_failure: true
+  tags:
+    - docker
+
+power:collect-energy:
+  stage: power-monitoring
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq wget tar sudo jq
+  script:
+    - echo "⚡ [POWER] Collecte des métriques de consommation électrique"
+    - chmod +x scripts/setup_scaphandre.sh
+    - ./scripts/setup_scaphandre.sh install || echo "Installation simulée"
+    - |
+      if [ -d "/sys/class/powercap/intel-rapl" ] || [ -d "/sys/class/powercap/intel-rapl:0" ]; then
+        echo "✓ RAPL disponible - Collecte réelle"
+        ./scripts/setup_scaphandre.sh run results/scaphandre_power.json 30
+      else
+        echo "⚠️  RAPL non disponible - Collecte simulée"
+        echo '{"available":false,"note":"RAPL not available in container","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > results/scaphandre_power.json
+      fi
+    - echo "✅ [POWER] Métriques de consommation collectées"
+    - ls -la results/
+  artifacts:
+    paths:
+      - results/scaphandre_power.json
+    expire_in: 1 month
+  dependencies:
+    - power:scaphandre-setup
   allow_failure: true
   tags:
     - docker
