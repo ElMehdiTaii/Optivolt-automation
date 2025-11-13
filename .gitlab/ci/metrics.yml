@@ -1,0 +1,33 @@
+# ==============================================================================
+# METRICS STAGE
+# Collecte des métriques système et workload benchmark
+# ==============================================================================
+
+metrics:collect:
+  stage: metrics
+  image: python:3.11-slim
+  before_script:
+    - pip install --no-cache-dir psutil
+  script:
+    - echo "========================================="
+    - echo "📊 [METRICS] Collecte des métriques"
+    - echo "========================================="
+    - mkdir -p results/
+    # Exécution du workload benchmark
+    - echo "[METRICS] Exécution du workload benchmark..."
+    - python3 scripts/workload_benchmark.py
+    - test -f /tmp/workload_results.json && cp /tmp/workload_results.json results/ || echo "Workload results manquants"
+    # Génération des autres métriques
+    - echo "[METRICS] Génération des métriques système..."
+    - python3 scripts/generate_metrics.py
+    - echo ""
+    - echo "✅ [METRICS] Métriques collectées"
+    - ls -lah results/
+    - echo "========================================="
+  artifacts:
+    paths:
+      - results/
+    expire_in: 1 month
+  allow_failure: false
+  tags:
+    - docker

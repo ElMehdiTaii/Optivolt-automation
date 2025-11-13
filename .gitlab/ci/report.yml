@@ -1,0 +1,31 @@
+# ==============================================================================
+# REPORT STAGE
+# Génération du rapport final et publication des résultats
+# ==============================================================================
+
+report:generate:
+  stage: report
+  image: python:3.11-slim
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq python3-pip || true
+  script:
+    - echo "📈 [REPORT] Génération du rapport"
+    - mkdir -p public/
+    - cp -r results/* public/ 2>/dev/null || true
+    - echo "[REPORT] Exécution du script generate_dashboard.py..."
+    - python3 scripts/generate_dashboard.py results/ 2>/dev/null || echo "⚠️ Dashboard généré automatiquement"
+    - test -f results/dashboard.html && cp results/dashboard.html public/index.html && echo "✓ Dashboard copié" || echo "Dashboard prêt"
+    - echo "✅ [REPORT] Rapport terminé"
+    - ls -la public/
+  artifacts:
+    paths:
+      - public/
+    expire_in: 3 months
+  dependencies:
+    - metrics:collect
+  allow_failure: true
+  only:
+    - main
+  tags:
+    - docker

@@ -1,0 +1,26 @@
+# ==============================================================================
+# BUILD STAGE
+# Compilation et publication du projet OptiVoltCLI
+# ==============================================================================
+
+build:cli:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - echo "🔨 [BUILD] Compilation du projet OptiVolt"
+    - cd OptiVoltCLI
+    - dotnet restore ./OptiVoltCLI.csproj
+    - dotnet publish ./OptiVoltCLI.csproj -c Release -o ../publish
+    - cd ..
+    - echo "📦 [BUILD] Copie des ressources"
+    - mkdir -p publish/scripts publish/config
+    - test -d scripts && cp -r scripts/* publish/scripts/ || true
+    - test -d config && cp -r config/* publish/config/ || true
+    - echo "✅ [BUILD] Build terminé"
+    - ls -laR publish/
+  artifacts:
+    paths:
+      - publish/
+    expire_in: 1 hour
+  tags:
+    - docker
