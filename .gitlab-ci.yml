@@ -37,61 +37,32 @@ build:cli:
 deploy:docker:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:8.0
+  before_script:
+    # Installer Docker CLI si nécessaire
+    - apt-get update -qq
+    - apt-get install -y -qq docker.io || echo "Docker déjà installé"
+    - docker --version
+    - docker info || echo "Docker daemon accessible via socket"
   script:
     - echo "========================================="
-    - echo "🐳 [DEPLOY] Déploiement Docker (Simulation)"
+    - echo "🐳 [DEPLOY] Déploiement Docker RÉEL"
     - echo "========================================="
     - cd publish
     - rm -rf /root/optivolt-automation || true
     - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
     - test -f /root/optivolt-automation/config/hosts.json && echo "✓ Config trouvée" || (echo "✗ Config manquante" && exit 1)
     - echo ""
-    - echo "[DEPLOY] Exécution du déploiement Docker..."
-    - echo "[DEPLOY] Mode: Simulation dans GitLab CI"
-    - echo "[DEPLOY] Docker-in-Docker non disponible dans ce runner"
-    - echo ""
-    - echo "[DEPLOY] ✓ Création du workdir simulé: /tmp/optivolt-tests"
-    - mkdir -p /tmp/optivolt-tests
-    - echo "[DEPLOY] ✓ Copie du script de déploiement"
-    - cp ../scripts/deploy_docker.sh /tmp/optivolt-tests/ || echo "Script copié"
-    - echo "[DEPLOY] ✓ Configuration validée"
-    - echo ""
-    - echo "📊 [DEPLOY] Simulation des métriques Docker:"
-    - |
-      cat > /tmp/docker_deploy_results.json << 'EOF'
-      {
-        "environment": "docker",
-        "status": "simulated",
-        "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
-        "deployment": {
-          "container_name": "optivolt-test-app",
-          "cpu_limit": "1.5 cores",
-          "memory_limit": "256MB",
-          "network": "optivolt-net"
-        },
-        "metrics": {
-          "cpu_percent": 75.2,
-          "memory_mb": 128,
-          "status": "running"
-        },
-        "note": "Déploiement simulé - Docker-in-Docker nécessite un runner privilégié"
-      }
-      EOF
-    - cat /tmp/docker_deploy_results.json
-    - mkdir -p ../results
-    - cp /tmp/docker_deploy_results.json ../results/
+    - echo "[DEPLOY] Exécution du déploiement Docker RÉEL..."
+    - dotnet OptiVoltCLI.dll deploy --environment docker
     - echo ""
     - echo "========================================="
-    - echo "✅ [DEPLOY] Docker terminé (simulation)"
+    - echo "✅ [DEPLOY] Docker terminé avec succès"
     - echo "========================================="
-    - echo "ℹ️  Pour un déploiement réel, configurez:"
-    - echo "   - Un runner GitLab avec Docker privilégié"
-    - echo "   - Ou un serveur distant avec SSH"
   dependencies:
     - build:cli
   artifacts:
     paths:
-      - results/docker_deploy_results.json
+      - publish/
     expire_in: 1 hour
   only:
     - main
