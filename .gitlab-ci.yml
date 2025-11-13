@@ -38,12 +38,12 @@ deploy:docker:
   stage: deploy
   image: docker:24-cli
   services:
-    - docker:24-dind
+    - name: docker:24-dind
+      command: ["--tls=false"]
   variables:
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+    # Configuration Docker sans TLS pour GitLab CI
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
   before_script:
     # Installation de .NET SDK pour exécuter OptiVoltCLI
@@ -51,6 +51,8 @@ deploy:docker:
     - curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 8.0 --install-dir /usr/share/dotnet
     - ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet
     - dotnet --version
+    # Attendre que Docker soit prêt
+    - sleep 5
     # Vérifier que Docker fonctionne
     - docker info
   script:
