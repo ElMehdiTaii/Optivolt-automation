@@ -41,20 +41,17 @@ power:collect-energy:
     - |
       if [ -d "/sys/class/powercap/intel-rapl" ] || [ -d "/sys/class/powercap/intel-rapl:0" ]; then
         echo "✓ RAPL disponible - Collecte réelle avec workload"
-        # Lancer Scaphandre en arrière-plan
         ./scripts/setup_scaphandre.sh prometheus &
         SCAPHANDRE_PID=$!
         sleep 5
-        # Exécuter le workload pendant 30s
         WORKLOAD_DURATION=30 WORKLOAD_INTENSITY=heavy python3 scripts/workload_benchmark.py
-        # Arrêter Scaphandre
         kill $SCAPHANDRE_PID 2>/dev/null || true
-        # Collecter les résultats
         ./scripts/setup_scaphandre.sh run results/scaphandre_power.json 10
       else
         echo "⚠️  RAPL non disponible - Collecte simulée"
         mkdir -p results
-        echo '{"available":false,"note":"RAPL not available in container","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > results/scaphandre_power.json
+        TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        echo "{\"available\":false,\"note\":\"RAPL not available in container\",\"timestamp\":\"$TIMESTAMP\"}" > results/scaphandre_power.json
       fi
     - echo "✅ [POWER] Métriques de consommation collectées"
     - ls -la results/
