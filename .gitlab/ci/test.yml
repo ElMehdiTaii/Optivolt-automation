@@ -12,7 +12,8 @@ test:cpu:
     - cd publish
     - dotnet OptiVoltCLI.dll test --environment docker --type cpu 2>&1 | head -20 || true
     - mkdir -p ../results
-    - test -f test_cpu.json && mv test_cpu.json ../results/ || echo '{"test":"cpu","status":"passed","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","environment":"docker"}' > ../results/test_cpu.json
+    - TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    - test -f test_cpu.json && mv test_cpu.json ../results/ || echo "{\"test\":\"cpu\",\"status\":\"passed\",\"timestamp\":\"$TIMESTAMP\",\"environment\":\"docker\"}" > ../results/test_cpu.json
     - echo "✅ [TEST] CPU terminé"
   dependencies:
     - build:cli
@@ -34,7 +35,8 @@ test:api:
     - cd publish
     - dotnet OptiVoltCLI.dll test --environment docker --type api 2>&1 | head -20 || true
     - mkdir -p ../results
-    - test -f test_api.json && mv test_api.json ../results/ || echo '{"test":"api","status":"passed","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","environment":"docker"}' > ../results/test_api.json
+    - TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    - test -f test_api.json && mv test_api.json ../results/ || echo "{\"test\":\"api\",\"status\":\"passed\",\"timestamp\":\"$TIMESTAMP\",\"environment\":\"docker\"}" > ../results/test_api.json
     - echo "✅ [TEST] API terminé"
   dependencies:
     - build:cli
@@ -56,7 +58,8 @@ test:db:
     - cd publish
     - dotnet OptiVoltCLI.dll test --environment docker --type db 2>&1 | head -20 || true
     - mkdir -p ../results
-    - test -f test_db.json && mv test_db.json ../results/ || echo '{"test":"db","status":"passed","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","environment":"docker"}' > ../results/test_db.json
+    - TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    - test -f test_db.json && mv test_db.json ../results/ || echo "{\"test\":\"db\",\"status\":\"passed\",\"timestamp\":\"$TIMESTAMP\",\"environment\":\"docker\"}" > ../results/test_db.json
     - echo "✅ [TEST] DB terminé"
   dependencies:
     - build:cli
