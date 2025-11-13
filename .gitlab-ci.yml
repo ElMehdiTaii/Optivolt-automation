@@ -36,31 +36,47 @@ build:cli:
 
 deploy:docker:
   stage: deploy
-  image: mcr.microsoft.com/dotnet/sdk:8.0
+  image: docker:24-cli
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+    DOCKER_DRIVER: overlay2
   before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq openssh-client
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519 2>/dev/null || true
-    - chmod 600 ~/.ssh/id_ed25519 2>/dev/null || true
-    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts 2>/dev/null || true
-    - chmod 644 ~/.ssh/known_hosts 2>/dev/null || true
+    # Installation de .NET SDK pour exécuter OptiVoltCLI
+    - apk add --no-cache bash curl icu-libs krb5-libs libgcc libintl libssl3 libstdc++ zlib
+    - curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 8.0 --install-dir /usr/share/dotnet
+    - ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet
+    - dotnet --version
+    # Vérifier que Docker fonctionne
+    - docker info
   script:
-    - echo "🐳 [DEPLOY] Déploiement Docker (CI/CD)"
+    - echo "========================================="
+    - echo "🐳 [DEPLOY] Déploiement Docker avec DinD"
+    - echo "========================================="
     - cd publish
     - rm -rf /root/optivolt-automation || true
     - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
     - test -f /root/optivolt-automation/config/hosts.json && echo "✓ Config trouvée" || (echo "✗ Config manquante" && exit 1)
+    - echo ""
     - echo "[DEPLOY] Exécution du déploiement Docker..."
-    - dotnet OptiVoltCLI.dll deploy --environment docker 2>&1 | head -20 || echo "⚠️ Déploiement simulé"
-    - echo "✅ [DEPLOY] Docker terminé"
+    - dotnet OptiVoltCLI.dll deploy --environment docker
+    - echo ""
+    - echo "========================================="
+    - echo "✅ [DEPLOY] Docker terminé avec succès"
+    - echo "========================================="
   dependencies:
     - build:cli
+  artifacts:
+    paths:
+      - publish/
+    expire_in: 1 hour
   only:
     - main
     - develop
-  allow_failure: true
   tags:
     - docker
 
@@ -175,16 +191,29 @@ test:db:
 metrics:collect:
   stage: metrics
   image: python:3.11-slim
+  before_script:
+    - pip install --no-cache-dir psutil
   script:
-    - echo "📊 [METRICS] Génération des métriques"
+    - echo "========================================="
+    - echo "📊 [METRICS] Collecte des métriques"
+    - echo "========================================="
+    - mkdir -p results/
+    # Exécution du workload benchmark
+    - echo "[METRICS] Exécution du workload benchmark..."
+    - python3 scripts/workload_benchmark.py
+    - test -f /tmp/workload_results.json && cp /tmp/workload_results.json results/ || echo "Workload results manquants"
+    # Génération des autres métriques
+    - echo "[METRICS] Génération des métriques système..."
     - python3 scripts/generate_metrics.py
+    - echo ""
     - echo "✅ [METRICS] Métriques collectées"
-    - ls -la results/
+    - ls -lah results/
+    - echo "========================================="
   artifacts:
     paths:
       - results/
     expire_in: 1 month
-  allow_failure: true
+  allow_failure: false
   tags:
     - docker
 
@@ -212,16 +241,31 @@ power:collect-energy:
   image: ubuntu:22.04
   before_script:
     - apt-get update -qq
-    - apt-get install -y -qq wget tar sudo jq
+    - apt-get install -y -qq wget tar sudo jq python3 python3-pip
+    - pip3 install --no-cache-dir psutil
   script:
-    - echo "⚡ [POWER] Collecte des métriques de consommation électrique"
+    - echo "========================================="
+    - echo "⚡ [POWER] Collecte énergie + workload"
+    - echo "========================================="
     - mkdir -p results
     - chmod +x scripts/setup_scaphandre.sh
-    - ./scripts/setup_scaphandre.sh install || echo "Installation simulée"
+    - chmod +x scripts/workload_benchmark.py
+    # Installation de Scaphandre
+    - ./scripts/setup_scaphandre.sh install || echo "[POWER] Installation simulée"
+    # Collecte des métriques de puissance
     - |
       if [ -d "/sys/class/powercap/intel-rapl" ] || [ -d "/sys/class/powercap/intel-rapl:0" ]; then
-        echo "✓ RAPL disponible - Collecte réelle"
-        ./scripts/setup_scaphandre.sh run results/scaphandre_power.json 30
+        echo "✓ RAPL disponible - Collecte réelle avec workload"
+        # Lancer Scaphandre en arrière-plan
+        ./scripts/setup_scaphandre.sh prometheus &
+        SCAPHANDRE_PID=$!
+        sleep 5
+        # Exécuter le workload pendant 30s
+        WORKLOAD_DURATION=30 WORKLOAD_INTENSITY=heavy python3 scripts/workload_benchmark.py
+        # Arrêter Scaphandre
+        kill $SCAPHANDRE_PID 2>/dev/null || true
+        # Collecter les résultats
+        ./scripts/setup_scaphandre.sh run results/scaphandre_power.json 10
       else
         echo "⚠️  RAPL non disponible - Collecte simulée"
         mkdir -p results

@@ -339,6 +339,90 @@ namespace OptiVoltCLI
             Console.WriteLine($"[DEPLOY] Script: {scriptPath}");
             Console.WriteLine($"[DEPLOY] Workdir: {workdir}");
 
+            // Détection si localhost : exécution locale sans SSH
+            bool isLocalhost = hostname == "localhost" || hostname == "127.0.0.1";
+            
+            if (isLocalhost)
+            {
+                Console.WriteLine($"[DEPLOY] Mode local détecté - exécution directe sans SSH");
+                
+                if (!File.Exists(fullScriptPath))
+                {
+                    Console.WriteLine($"[DEPLOY] ✗ Script introuvable: {fullScriptPath}");
+                    return;
+                }
+
+                try
+                {
+                    // Création du workdir local
+                    Directory.CreateDirectory(workdir);
+                    Console.WriteLine($"[DEPLOY] ✓ Répertoire créé: {workdir}");
+
+                    // Copie du script localement
+                    string localScriptPath = Path.Combine(workdir, "deploy.sh");
+                    File.Copy(fullScriptPath, localScriptPath, true);
+                    Console.WriteLine($"[DEPLOY] ✓ Script copié localement");
+
+                    // Rendre le script exécutable (Linux/Mac)
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        var chmodProcess = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "chmod",
+                            Arguments = $"+x {localScriptPath}",
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            UseShellExecute = false
+                        });
+                        chmodProcess?.WaitForExit();
+                    }
+
+                    // Exécution du script
+                    Console.WriteLine($"[DEPLOY] Exécution du script...");
+                    var process = new System.Diagnostics.Process
+                    {
+                        StartInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "/bin/bash",
+                            Arguments = $"{localScriptPath} {workdir}",
+                            WorkingDirectory = workdir,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            UseShellExecute = false
+                        }
+                    };
+
+                    process.Start();
+                    string output = await process.StandardOutput.ReadToEndAsync();
+                    string errors = await process.StandardError.ReadToEndAsync();
+                    await process.WaitForExitAsync();
+
+                    Console.WriteLine($"\n--- Output ---");
+                    Console.WriteLine(output);
+                    if (!string.IsNullOrEmpty(errors))
+                    {
+                        Console.WriteLine($"--- Errors ---");
+                        Console.WriteLine(errors);
+                    }
+
+                    if (process.ExitCode == 0)
+                    {
+                        Console.WriteLine($"\n[DEPLOY] ✓ Environnement {environment} déployé avec succès");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"\n[DEPLOY] ✗ Échec du déploiement (code: {process.ExitCode})");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DEPLOY] ✗ Erreur lors de l'exécution locale: {ex.Message}");
+                }
+                
+                return;
+            }
+
+            // Mode SSH pour les hôtes distants
             try
             {
                 SshClient client = null;
@@ -366,7 +450,7 @@ namespace OptiVoltCLI
                 }
                 else
                 {
-                    Console.WriteLine($"[DEPLOY] Mode local détecté");
+                    Console.WriteLine($"[DEPLOY] Mode SSH avec clé privée");
                     string keyPath = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), 
                         ".ssh", "id_ed25519"
@@ -389,12 +473,12 @@ namespace OptiVoltCLI
                 using (client)
                 using (sftp)
                 {
-                    Console.WriteLine($"[DEPLOY] Connexion à {hostname}:{port}...");
+                    Console.WriteLine($"[DEPLOY] Connexion SSH à {hostname}:{port}...");
                     client.Connect();
                     Console.WriteLine($"[DEPLOY] ✓ SSH connecté");
 
                     var mkdirCmd = client.RunCommand($"mkdir -p {workdir}");
-                    Console.WriteLine($"[DEPLOY] Création du répertoire: {workdir}");
+                    Console.WriteLine($"[DEPLOY] Création du répertoire distant: {workdir}");
 
                     if (!File.Exists(fullScriptPath))
                     {
@@ -410,7 +494,7 @@ namespace OptiVoltCLI
                         {
                             sftp.UploadFile(fileStream, remoteScriptPath, true);
                         }
-                        Console.WriteLine($"[DEPLOY] ✓ Script copié");
+                        Console.WriteLine($"[DEPLOY] ✓ Script copié via SFTP");
                         sftp.Disconnect();
                     }
                     catch (Exception ex)
@@ -420,7 +504,7 @@ namespace OptiVoltCLI
                     }
 
                     var chmodCmd = client.RunCommand($"chmod +x {workdir}/deploy.sh");
-                    Console.WriteLine($"[DEPLOY] Exécution du script...");
+                    Console.WriteLine($"[DEPLOY] Exécution du script distant...");
                     var deployCmd = client.RunCommand($"cd {workdir} && ./deploy.sh {workdir}");
                     
                     Console.WriteLine($"\n--- Output ---");
@@ -445,7 +529,7 @@ namespace OptiVoltCLI
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DEPLOY] ✗ Erreur: {ex.Message}");
+                Console.WriteLine($"[DEPLOY] ✗ Erreur SSH: {ex.Message}");
             }
         }
 
