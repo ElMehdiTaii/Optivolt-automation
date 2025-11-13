@@ -13,7 +13,12 @@ deploy:docker:
     - cd publish
     - rm -rf /root/optivolt-automation || true
     - ln -s "$CI_PROJECT_DIR/publish" /root/optivolt-automation
-    - test -f /root/optivolt-automation/config/hosts.json && echo "✓ Config trouvée" || (echo "✗ Config manquante" && exit 1)
+    - |
+      if [ ! -f /root/optivolt-automation/config/hosts.json ]; then
+        echo "✗ Config manquante"
+        exit 1
+      fi
+      echo "✓ Config trouvée"
     - echo ""
     - echo "[DEPLOY] Exécution du déploiement Docker..."
     - echo "[DEPLOY] Mode: Simulation (Docker-in-Docker nécessite runner privé)"
