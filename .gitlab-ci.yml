@@ -196,12 +196,13 @@ power:scaphandre-setup:
     - apt-get update -qq
     - apt-get install -y -qq wget tar sudo
   script:
-    - echo "⚡ [POWER] Installation de Scaphandre"
+    - echo "⚡ [POWER] Vérification de l'environnement Scaphandre"
     - chmod +x scripts/setup_scaphandre.sh
-    - ./scripts/setup_scaphandre.sh check || echo "RAPL non disponible dans GitLab CI"
-    - echo "ℹ️  [POWER] Scaphandre est configuré pour les runners bare-metal"
-    - echo "ℹ️  [POWER] Dans GitLab CI, les métriques RAPL ne sont disponibles que sur des runners physiques"
-    - echo "✅ [POWER] Setup vérifié"
+    - echo "ℹ️  [POWER] Ce job vérifie seulement les prérequis (pas d'installation)"
+    - ./scripts/setup_scaphandre.sh check || echo "✓ Vérification terminée - RAPL non disponible (normal dans Docker)"
+    - echo "ℹ️  [POWER] Scaphandre sera installé dans le job suivant (power:collect-energy)"
+    - echo "ℹ️  [POWER] Les métriques RAPL réelles nécessitent un runner bare-metal"
+    - echo "✅ [POWER] Vérification terminée"
   allow_failure: true
   tags:
     - docker
@@ -214,6 +215,7 @@ power:collect-energy:
     - apt-get install -y -qq wget tar sudo jq
   script:
     - echo "⚡ [POWER] Collecte des métriques de consommation électrique"
+    - mkdir -p results
     - chmod +x scripts/setup_scaphandre.sh
     - ./scripts/setup_scaphandre.sh install || echo "Installation simulée"
     - |
@@ -222,6 +224,7 @@ power:collect-energy:
         ./scripts/setup_scaphandre.sh run results/scaphandre_power.json 30
       else
         echo "⚠️  RAPL non disponible - Collecte simulée"
+        mkdir -p results
         echo '{"available":false,"note":"RAPL not available in container","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > results/scaphandre_power.json
       fi
     - echo "✅ [POWER] Métriques de consommation collectées"
