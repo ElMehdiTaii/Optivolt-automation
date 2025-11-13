@@ -324,7 +324,6 @@ report:generate:
     paths:
       - public/
     expire_in: 3 months
-  pages:
   dependencies:
     - metrics:collect
   allow_failure: true
