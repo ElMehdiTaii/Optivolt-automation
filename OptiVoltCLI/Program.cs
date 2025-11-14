@@ -3,6 +3,7 @@ using System.CommandLine;
 using System.Threading.Tasks;
 using OptiVoltCLI.Commands;
 using OptiVoltCLI.Services;
+using OptiVoltCLI.Logging;
 
 namespace OptiVoltCLI
 {
@@ -17,21 +18,32 @@ namespace OptiVoltCLI
             // Affichage de la bannière
             DisplayBanner();
 
-            // Initialisation des services (Dependency Injection manuel)
-            var configService = new ConfigurationService();
-            var sshService = new SshService(configService);
-            var metricsService = new MetricsService(sshService);
+            // Initialisation du logger
+            var logger = new ConsoleLogger(LogLevel.Info, includeTimestamp: false);
 
-            // Configuration de la commande racine
-            var rootCommand = new RootCommand("OptiVolt - Automatisation des tests de virtualisation");
+            try
+            {
+                // Initialisation des services (Dependency Injection manuel)
+                var configService = new ConfigurationService(logger: logger);
+                var sshService = new SshService(configService, logger);
+                var metricsService = new MetricsService(sshService, logger);
 
-            // Ajout des commandes
-            rootCommand.AddCommand(DeployCommand.Create(configService, sshService));
-            rootCommand.AddCommand(TestCommand.Create(configService, sshService, metricsService));
-            rootCommand.AddCommand(CollectCommand.Create(configService, metricsService));
+                // Configuration de la commande racine
+                var rootCommand = new RootCommand("OptiVolt - Automatisation des tests de virtualisation");
 
-            // Exécution
-            return await rootCommand.InvokeAsync(args);
+                // Ajout des commandes
+                rootCommand.AddCommand(DeployCommand.Create(configService, sshService));
+                rootCommand.AddCommand(TestCommand.Create(configService, sshService, metricsService));
+                rootCommand.AddCommand(CollectCommand.Create(configService, metricsService));
+
+                // Exécution
+                return await rootCommand.InvokeAsync(args);
+            }
+            catch (Exception ex)
+            {
+                logger.Critical("Application failed to start", ex);
+                return 1;
+            }
         }
 
         private static void DisplayBanner()
