@@ -104,7 +104,7 @@ namespace OptiVoltCLI.Services
 
                 var privateKey = new PrivateKeyFile(privateKeyPath);
                 var connectionInfo = new ConnectionInfo(
-                    hostConfig.Hostname,
+                    hostConfig.Ip,
                     hostConfig.Port,
                     hostConfig.Username,
                     new PrivateKeyAuthenticationMethod(hostConfig.Username, privateKey)

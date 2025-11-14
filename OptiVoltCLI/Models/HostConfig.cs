@@ -7,22 +7,25 @@ namespace OptiVoltCLI.Models
         [JsonProperty("hostname")]
         public string Hostname { get; set; } = string.Empty;
 
+        [JsonProperty("ip")]
+        public string Ip { get; set; } = string.Empty;
+
         [JsonProperty("port")]
         public int Port { get; set; } = 22;
 
-        [JsonProperty("username")]
+        [JsonProperty("user")]
         public string Username { get; set; } = string.Empty;
 
         [JsonProperty("privateKeyPath")]
-        public string PrivateKeyPath { get; set; } = string.Empty;
+        public string PrivateKeyPath { get; set; } = "~/.ssh/id_rsa";
 
-        [JsonProperty("workingDirectory")]
+        [JsonProperty("workdir")]
         public string WorkingDirectory { get; set; } = string.Empty;
     }
 
     public class EnvironmentsConfig
     {
-        [JsonProperty("environments")]
+        [JsonProperty("hosts")]
         public Dictionary<string, HostConfig> Environments { get; set; } = new();
     }
 }
