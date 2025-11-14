@@ -3,6 +3,11 @@
 # Pipeline automatisé pour comparaison Docker, MicroVM et Unikernel
 # ==============================================================================
 
+# Variables globales
+variables:
+  DOTNET_VERSION: "8.0"
+  TEST_DURATION: "30"
+
 # Inclusion des fichiers de configuration
 include:
   - local: '.gitlab/ci/build.yml'
@@ -20,8 +25,3 @@ stages:
   - metrics         # Collecte des métriques système
   - power-monitoring # Monitoring de la consommation électrique
   - report          # Génération du rapport final
-
-# Variables globales
-variables:
-  DOTNET_VERSION: "8.0"
-  TEST_DURATION: "30"
