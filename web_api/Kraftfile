@@ -1,0 +1,67 @@
+specification: v0.6
+
+name: optivolt-web-api
+
+# Unikraft unikernel configuration for FastAPI web API
+unikraft:
+  version: stable
+  kconfig:
+    # Network support
+    CONFIG_LIBUKNETDEV: 'y'
+    CONFIG_LIBUKNETDEV_MAXNBQUEUES: 1
+    
+    # HTTP/TCP support
+    CONFIG_LIBVFSCORE: 'y'
+    CONFIG_LIBPOSIX_SOCKET: 'y'
+    CONFIG_LWIP: 'y'
+    CONFIG_LWIP_THREADS: 'y'
+    CONFIG_LWIP_SOCKET: 'y'
+    
+    # Python support
+    CONFIG_LIBPYTHON3: 'y'
+    CONFIG_LIBPYTHON3_MAIN_FUNCTION: 'y'
+    
+    # Optimization
+    CONFIG_OPTIMIZE_SIZE: 'y'
+    CONFIG_OPTIMIZE_PERF: 'y'
+
+libraries:
+  # Python 3 runtime
+  python3:
+    version: stable
+    kconfig:
+      CONFIG_LIBPYTHON3_EXTENSION_LIBSSL: 'y'
+  
+  # Network stack
+  lwip:
+    version: stable
+  
+  # Virtual filesystem
+  vfscore:
+    version: stable
+
+targets:
+  - platform: kvm
+    architecture: x86_64
+
+# Application configuration
+cmd:
+  - /app/main.py
+
+# Filesystem rootfs
+rootfs: ./rootfs
+
+# Build configuration
+build:
+  - name: optivolt-unikernel
+    command: kraft build --no-cache --jobs 4
+
+# Runtime configuration
+run:
+  architecture: x86_64
+  platform: kvm
+  memory: 128M
+  ports:
+    - 8000:8000
+  networks:
+    - bridge

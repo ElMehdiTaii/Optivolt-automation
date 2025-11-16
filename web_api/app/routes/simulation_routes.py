@@ -1,9 +1,19 @@
 from fastapi import APIRouter
-from greenux_shared_module.models.payload import Payload, DelayPayload, HeavyPayload
+from pydantic import BaseModel
 from app.helpers import generate_log, generate_big_string
 import time
 
 router = APIRouter()
+
+# Simple payload models
+class Payload(BaseModel):
+    content: str = ""
+
+class DelayPayload(BaseModel):
+    delay_ms: int = 100
+
+class HeavyPayload(BaseModel):
+    size_kb: int = 500
 
 
 # 🔷 GET endpoints
@@ -53,42 +63,52 @@ def post_normal(payload: Payload):
 
 @router.post("/simulate/heavy")
 def post_heavy(payload: HeavyPayload):
-    if payload.content:
-        content = payload.content
-        generated = False
-    else:
-        content = generate_big_string(payload.size_kb)
-        generated = True
-
+    content = generate_big_string(payload.size_kb)
     size = len(content.encode())
     log = generate_log({
         "type": "POST",
         "received_size_kb": size // 1024,
-        "generated": generated
+        "generated": True
     })
-    msg = (payload.content or "")[:100] or "Aucun contenu"
     return {
         **log,
         "response": {
-            "message": msg + f", Taille finale : {size} octets,  "
+            "message": f"Heavy payload processed, size: {size} bytes"
         }
     }
 
 
 @router.post("/simulate/delay")
 def post_delay(payload: DelayPayload):
-    time.sleep(payload.ms / 1000)
-
-    content_preview = (payload.content or "")[:100] or "Aucun contenu"
-    size = len(payload.content.encode()) if payload.content else 0
-
+    time.sleep(payload.delay_ms / 1000)
+    
     log = generate_log({
         "type": "POST",
-        "delay_ms": payload.ms,
-        "received_size_kb": size // 1024
+        "delay_ms": payload.delay_ms
     })
-    msg = f"Délai simulé de {payload.ms}ms - contenu : {content_preview}"
     return {
         **log,
-        "response": {"message": msg}
+        "response": {"message": f"Simulated delay of {payload.delay_ms} ms"}
     }
+
+
+# 🔷 Simple test endpoints for benchmarking
+
+@router.get("/api/light")
+def api_light():
+    """Lightweight endpoint for performance testing"""
+    return {"status": "ok", "message": "Light response", "data": {"value": 42}}
+
+
+@router.get("/api/heavy")
+def api_heavy():
+    """Heavy payload endpoint for performance testing"""
+    data = generate_big_string(500)  # 500 KB
+    return {"status": "ok", "message": "Heavy response", "size_kb": 500, "data": data[:100]}
+
+
+@router.get("/api/slow")
+def api_slow():
+    """Endpoint with artificial delay for latency testing"""
+    time.sleep(1)  # 1 second delay
+    return {"status": "ok", "message": "Slow response", "delay_ms": 1000}

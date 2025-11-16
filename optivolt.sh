@@ -17,16 +17,16 @@ Usage: ./optivolt.sh <command> [options]
 
 Commands:
   deploy <target>       Deploy containers
-                        Targets: docker, microvm, minimal, all
+                        Targets: docker, microvm, minimal, webapi, all
   
   monitor <action>      Monitoring operations
                         Actions: start, stop, status, dashboard
   
   benchmark <type>      Run benchmarks
-                        Types: cpu, ram, api, full
+                        Types: cpu, ram, api, webapi, full
   
   dashboard <action>    Dashboard operations
-                        Actions: create, update, delete
+                        Actions: create, update, delete, webapi
   
   validate             Validate entire setup
   
@@ -36,8 +36,10 @@ Commands:
 
 Examples:
   ./optivolt.sh deploy all
+  ./optivolt.sh deploy webapi
   ./optivolt.sh monitor dashboard
-  ./optivolt.sh benchmark full
+  ./optivolt.sh benchmark webapi
+  ./optivolt.sh dashboard webapi
   ./optivolt.sh validate
 
 EOF
@@ -49,22 +51,26 @@ deploy_containers() {
     
     case "$target" in
         docker)
-            bash "$SCRIPT_DIR/deployment/deploy_docker.sh"
+            bash "$SCRIPT_DIR/scripts/deployment/deploy_docker.sh"
             ;;
         microvm)
-            bash "$SCRIPT_DIR/deployment/deploy_microvm.sh"
+            bash "$SCRIPT_DIR/scripts/deployment/deploy_microvm.sh"
             ;;
         minimal)
-            bash "$SCRIPT_DIR/deployment/deploy_unikernel.sh"
+            bash "$SCRIPT_DIR/scripts/deployment/deploy_unikernel.sh"
+            ;;
+        webapi)
+            bash "$SCRIPT_DIR/scripts/deployment/deploy_webapi_all.sh" deploy
             ;;
         all)
-            bash "$SCRIPT_DIR/deployment/deploy_docker.sh"
-            bash "$SCRIPT_DIR/deployment/deploy_microvm.sh"
-            bash "$SCRIPT_DIR/deployment/deploy_unikernel.sh"
+            bash "$SCRIPT_DIR/scripts/deployment/deploy_docker.sh"
+            bash "$SCRIPT_DIR/scripts/deployment/deploy_microvm.sh"
+            bash "$SCRIPT_DIR/scripts/deployment/deploy_unikernel.sh"
+            bash "$SCRIPT_DIR/scripts/deployment/deploy_webapi_all.sh" deploy
             ;;
         *)
             log_error "Unknown target: $target"
-            log_info "Available targets: docker, microvm, minimal, all"
+            log_info "Available targets: docker, microvm, minimal, webapi, all"
             exit 1
             ;;
     esac
@@ -111,24 +117,30 @@ run_benchmarks() {
     
     case "$type" in
         cpu)
-            bash "$SCRIPT_DIR/benchmarks/run_test_cpu.sh"
+            log_info "Running CPU benchmark..."
+            bash "$SCRIPT_DIR/scripts/benchmarks/run_test_cpu.sh"
             ;;
         ram)
             log_info "Running memory benchmark..."
-            bash "$SCRIPT_DIR/monitoring/collect_metrics.sh"
+            bash "$SCRIPT_DIR/scripts/monitoring/collect_metrics.sh"
             ;;
         api)
-            bash "$SCRIPT_DIR/benchmarks/run_test_api.sh"
+            bash "$SCRIPT_DIR/scripts/benchmarks/run_test_api.sh"
+            ;;
+        webapi)
+            log_info "Running Web API benchmarks..."
+            bash "$SCRIPT_DIR/scripts/benchmarks/benchmark_webapi.sh" full
             ;;
         full)
             log_info "Running full benchmark suite..."
-            bash "$SCRIPT_DIR/benchmarks/run_test_cpu.sh"
-            bash "$SCRIPT_DIR/benchmarks/run_test_api.sh"
-            bash "$SCRIPT_DIR/monitoring/validate_metrics.sh"
+            bash "$SCRIPT_DIR/scripts/benchmarks/run_test_cpu.sh"
+            bash "$SCRIPT_DIR/scripts/benchmarks/run_test_api.sh"
+            bash "$SCRIPT_DIR/scripts/benchmarks/benchmark_webapi.sh" full
+            bash "$SCRIPT_DIR/scripts/monitoring/validate_metrics.sh"
             ;;
         *)
             log_error "Unknown benchmark type: $type"
-            log_info "Available types: cpu, ram, api, full"
+            log_info "Available types: cpu, ram, api, webapi, full"
             exit 1
             ;;
     esac
@@ -139,7 +151,11 @@ dashboard_operations() {
     
     case "$action" in
         create|update)
-            bash "$SCRIPT_DIR/dashboards/create-dashboard.sh"
+            bash "$SCRIPT_DIR/scripts/dashboards/create-dashboard.sh"
+            ;;
+        webapi)
+            log_info "Creating Web API dashboard..."
+            bash "$SCRIPT_DIR/scripts/dashboards/create-webapi-dashboard.sh"
             ;;
         delete)
             log_warning "Deleting dashboard: $GRAFANA_DASHBOARD_UID"
@@ -148,7 +164,7 @@ dashboard_operations() {
             ;;
         *)
             log_error "Unknown action: $action"
-            log_info "Available actions: create, update, delete"
+            log_info "Available actions: create, update, delete, webapi"
             exit 1
             ;;
     esac
