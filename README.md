@@ -4,6 +4,25 @@
 
 OptiVolt is an automated platform for comparing performance and energy consumption across different virtualization technologies (Docker, MicroVM, Unikernel). It provides comprehensive tooling for deployment, testing, metrics collection, and visualization.
 
+### 🚀 Quick Start (Ubuntu VirtualBox)
+
+**Setup local MicroVM and Unikernel environments:**
+```bash
+# 1. Enable nested virtualization in VirtualBox (on host machine, VM powered off)
+VBoxManage modifyvm "YourVMName" --nested-hw-virt on
+
+# 2. Configure local environment (in Ubuntu VM)
+bash scripts/setup_local_vms.sh
+
+# 3. Run quick test
+bash scripts/test_local_setup.sh
+
+# 4. Run full benchmark
+bash scripts/run_full_benchmark.sh
+```
+
+See [docs/LOCAL_VM_SETUP.md](docs/LOCAL_VM_SETUP.md) for detailed instructions.
+
 ## Architecture
 
 ### Core Components

@@ -5,7 +5,7 @@
       "ip": "localhost",
       "user": "root",
       "port": 2222,
-      "workdir": "/tmp/optivolt-tests"
+      "workdir": "/home/ubuntu/optivolt-automation"
     },
     "microvm": {
       "hostname": "microvm-test",
@@ -26,7 +26,7 @@
       "ip": "127.0.0.1",
       "user": "root",
       "port": 22,
-      "workdir": "/tmp/optivolt-tests"
+      "workdir": "/home/ubuntu/optivolt-automation"
     }
   },
   "scripts": {

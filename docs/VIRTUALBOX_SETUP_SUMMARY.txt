@@ -1,0 +1,221 @@
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║    ✅ OptiVolt - Configuration VirtualBox Complète        ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+📋 RÉSUMÉ : Exécution MicroVM/Unikernel sur Ubuntu VirtualBox
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 OBJECTIF ATTEINT
+─────────────────────
+Vous pouvez maintenant exécuter MicroVMs et Unikernels LOCALEMENT
+dans votre Ubuntu VirtualBox pour vos benchmarks comparatifs.
+
+
+📂 NOUVEAUX FICHIERS CRÉÉS
+─────────────────────────────
+✅ scripts/setup_local_vms.sh      → Configuration automatique
+✅ scripts/test_local_setup.sh     → Test rapide
+✅ scripts/run_full_benchmark.sh   → Benchmark complet
+✅ docs/LOCAL_VM_SETUP.md          → Documentation détaillée
+
+
+🚀 PROCÉDURE EN 3 ÉTAPES
+─────────────────────────────
+
+┌─ ÉTAPE 1 : Activer la virtualisation imbriquée ─────────┐
+│                                                           │
+│ Sur votre MACHINE HÔTE (VM Ubuntu éteinte) :            │
+│                                                           │
+│ Windows/Mac/Linux :                                      │
+│   VBoxManage modifyvm "Ubuntu" --nested-hw-virt on      │
+│                                                           │
+│ Ou via GUI VirtualBox :                                  │
+│   VM → Configuration → Système → Processeur              │
+│   ☑ Activer VT-x/AMD-V imbriqué                         │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
+
+┌─ ÉTAPE 2 : Configuration dans Ubuntu VM ────────────────┐
+│                                                           │
+│ Démarrer la VM Ubuntu puis :                            │
+│                                                           │
+│   cd /home/ubuntu/optivolt-automation                   │
+│   bash scripts/setup_local_vms.sh                       │
+│                                                           │
+│ Ce script installe :                                     │
+│   • Docker (conteneurs)                                  │
+│   • QEMU/KVM (virtualisation)                           │
+│   • Firecracker (MicroVM ultra-léger)                   │
+│   • OSv/Capstan (Unikernel)                             │
+│   • Configure hosts.json en mode local                  │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
+
+┌─ ÉTAPE 3 : Lancer les benchmarks ───────────────────────┐
+│                                                           │
+│ Test rapide (2 minutes) :                               │
+│   bash scripts/test_local_setup.sh                      │
+│                                                           │
+│ Benchmark complet (15+ minutes) :                       │
+│   bash scripts/run_full_benchmark.sh                    │
+│                                                           │
+│ Test manuel :                                            │
+│   cd publish/                                            │
+│   ./OptiVoltCLI deploy --environment docker             │
+│   ./OptiVoltCLI test --environment docker --type cpu    │
+│   ./OptiVoltCLI collect --environment all               │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
+
+
+🏗️ ARCHITECTURE LOCALE
+────────────────────────
+
+  Ubuntu VirtualBox VM
+  ├─── Docker Engine        → Conteneurs (baseline)
+  ├─── QEMU/KVM            → MicroVMs classiques
+  ├─── Firecracker         → MicroVMs ultra-légers
+  └─── OSv (Capstan)       → Unikernels
+
+  Tous s'exécutent sur localhost avec la même config réseau.
+
+
+📊 MÉTRIQUES COLLECTÉES
+────────────────────────
+
+• Temps de démarrage       (ms)
+• Utilisation CPU          (%)
+• Consommation RAM         (MB)
+• Throughput I/O           (MB/s)
+• Latence API              (ms)
+• Consommation énergétique (W via Scaphandre)
+
+
+🔍 VÉRIFICATION
+─────────────────
+
+Après setup, vérifier :
+
+  sudo kvm-ok
+  → "KVM acceleration can be used" ✅
+
+  docker --version
+  firecracker --version
+  qemu-system-x86_64 --version
+  ls -la /dev/kvm
+
+
+⚠️ SI KVM NON DISPONIBLE
+──────────────────────────
+
+Pas de panique ! Le projet fonctionne en mode simulation :
+  ✅ Docker fonctionne normalement
+  ⚠️ MicroVM/Unikernel utilisent QEMU sans accélération
+     (plus lent mais fonctionnel pour tests)
+
+
+📈 VISUALISATION DES RÉSULTATS
+────────────────────────────────
+
+Option 1 : Grafana (temps réel)
+  docker-compose -f docker-compose-monitoring.yml up -d
+  http://localhost:3000
+  Login : admin / optivolt2025
+
+Option 2 : Dashboard HTML (après benchmark)
+  firefox results/benchmarks/*/dashboard.html
+
+Option 3 : JSON brut
+  cat results/benchmarks/*/docker_metrics.json
+
+
+🎓 DOCUMENTATION COMPLÈTE
+───────────────────────────
+
+  docs/LOCAL_VM_SETUP.md    → Guide détaillé pas à pas
+  README.md                 → Vue d'ensemble du projet
+  RAPPORT_ETAT_PROJET.md    → État complet du projet
+
+
+💡 ALTERNATIVES
+─────────────────
+
+Si virtualisation imbriquée impossible :
+
+1. Docker uniquement
+   → Fonctionne sans KVM
+
+2. Cloud gratuit
+   → Oracle Cloud Free Tier (2 instances ARM)
+   → AWS Free Tier (t2.micro avec KVM)
+   → Google Cloud (300$ crédit)
+
+3. Machine physique
+   → Installer Ubuntu directement pour KVM natif
+
+
+✅ CHECKLIST DE VALIDATION
+────────────────────────────
+
+  [ ] VirtualBox nested virt activé
+  [ ] sudo kvm-ok → KVM disponible
+  [ ] Docker installé et fonctionnel
+  [ ] OptiVoltCLI compilé (publish/)
+  [ ] config/hosts.json configuré
+  [ ] Test rapide exécuté avec succès
+  [ ] Résultats dans results/
+
+
+🚀 EXEMPLE D'UTILISATION COMPLÈTE
+────────────────────────────────────
+
+# 1. Setup (une fois)
+bash scripts/setup_local_vms.sh
+
+# 2. Compiler le CLI (si pas déjà fait)
+cd OptiVoltCLI
+dotnet publish -c Release -o ../publish
+cd ..
+
+# 3. Lancer monitoring (optionnel)
+docker-compose -f docker-compose-monitoring.yml up -d
+
+# 4. Benchmark complet
+bash scripts/run_full_benchmark.sh
+
+# 5. Voir résultats
+ls -la results/benchmarks/
+
+# 6. Analyser
+firefox results/benchmarks/*/dashboard.html
+
+
+📞 SUPPORT & TROUBLESHOOTING
+──────────────────────────────
+
+Logs :
+  tail -f logs/*.log
+  dmesg | grep kvm
+
+Erreurs communes :
+  • "Permission denied /dev/kvm"
+    → sudo usermod -aG kvm $USER && newgrp kvm
+
+  • "Firecracker not found"
+    → Installé dans /usr/local/bin/firecracker
+    → Vérifier PATH
+
+  • "KVM not supported"
+    → Activer nested virt dans VirtualBox
+    → Ou continuer en mode simulation
+
+
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║    🎉 Configuration terminée !                            ║
+║    Prêt pour les benchmarks MicroVM vs Unikernel         ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
