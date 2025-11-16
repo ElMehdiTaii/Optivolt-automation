@@ -2,82 +2,361 @@
 
 ## 🎯 Vue d'Ensemble
 
-Ce guide vous montre comment visualiser vos métriques de consommation énergétique OptiVolt avec **Grafana** + **Prometheus** + **Scaphandre**.
+Ce guide explique comment visualiser les métriques de performance OptiVolt avec **Grafana + Prometheus + cAdvisor**.
 
-### **Architecture**
+**🔍 Stack de Monitoring :**
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   OptiVolt Stack                        │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  Scaphandre (8080)  ──┐                                │
-│  Node Exporter (9100) ─┤                               │
-│  cAdvisor (8081)  ─────┤                               │
-│                        │                                │
-│                        ├──→ Prometheus (9090)           │
-│                        │    (Collecte & Stockage)       │
-│                        │                                │
-│                        └──→ Grafana (3000)              │
-│                             (Visualisation)             │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│           OptiVolt Monitoring Stack              │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│  Containers Docker    ──┐                       │
+│  cAdvisor (8081)      ──┤                       │
+│  Node Exporter (9100) ──┤                       │
+│                         │                        │
+│                         ├──→ Prometheus (9090)   │
+│                         │    • Collecte          │
+│                         │    • Stockage          │
+│                         │                        │
+│                         └──→ Grafana (3000)      │
+│                              • Dashboards        │
+│                              • Alertes           │
+│                                                  │
+└──────────────────────────────────────────────────┘
 ```
-
-### **Composants**
-
-| Service | Port | Rôle |
-|---------|------|------|
-| **Scaphandre** | 8080 | Métriques de consommation électrique (Watts) |
-| **Prometheus** | 9090 | Base de données de séries temporelles |
-| **Grafana** | 3000 | Interface de visualisation (dashboards) |
-| **Node Exporter** | 9100 | Métriques système (CPU, RAM, Disk, Network) |
-| **cAdvisor** | 8081 | Métriques Docker (containers) |
 
 ---
 
 ## 🚀 Démarrage Rapide
 
-### **1. Démarrer la Stack**
+### 1. Lancer la Stack Monitoring
 
 ```bash
-cd /home/ubuntu/optivolt-automation
-./start-monitoring.sh
+cd /workspaces/Optivolt-automation
+bash start-monitoring.sh
+
+# Attendre 20 secondes
+sleep 20
+
+# Vérifier
+docker ps | grep optivolt
 ```
 
-**Le script va :**
-- ✅ Vérifier Docker et RAPL
-- ✅ Démarrer tous les services
-- ✅ Attendre que tout soit prêt
-- ✅ Afficher les URLs d'accès
+**Containers lancés :**
+- `optivolt-prometheus` (port 9090)
+- `optivolt-grafana` (port 3000)
+- `optivolt-cadvisor` (port 8081)
+- `optivolt-node-exporter` (port 9100)
 
-### **2. Accéder à Grafana**
+### 2. Accéder à Grafana
 
-Ouvrez votre navigateur :
+**Dans GitHub Codespaces :**
+1. VS Code → Onglet **PORTS** (bas)
+2. Port **3000** → Cliquer 🌐
+3. Login : `admin` / `admin`
+
+**En local :**
 ```
 http://localhost:3000
 ```
 
-**Identifiants :**
-- **Username :** `admin`
-- **Password :** `optivolt2025`
+### 3. Voir les Dashboards
 
-### **3. Voir le Dashboard**
+Navigation : **Menu (☰) → Dashboards → Browse**
 
-Le dashboard **"OptiVolt - Power Consumption Monitoring"** est automatiquement configuré !
+**Dashboards disponibles :**
+- ✅ **OptiVolt - Docker vs MicroVM vs Unikernel** (principal)
+- ✅ **OptiVolt - System Metrics**
+- ℹ️ **Power Consumption** (ancien, optionnel)
 
-Naviguez vers : **Dashboards → OptiVolt → Power Consumption Monitoring**
+📖 **Guide complet accès :** [../GRAFANA_CODESPACES_ACCESS.md](../GRAFANA_CODESPACES_ACCESS.md)
 
 ---
 
 ## 📊 Dashboards Disponibles
 
-### **Dashboard Principal : Power Consumption**
+### 1. OptiVolt - Docker vs MicroVM vs Unikernel
 
-Le dashboard inclut :
+**Panels inclus :**
 
-#### **1. Total Host Power Consumption**
-- Consommation totale de l'hôte en Watts
+#### 📈 CPU Usage Comparison (Time Series)
+```promql
+rate(container_cpu_usage_seconds_total{name=~"optivolt.*"}[1m]) * 100
+```
+- Comparaison CPU temps réel
+- 3 courbes (Docker, MicroVM, Unikernel)
+- Auto-refresh 10s
+
+#### 💾 Memory Usage Comparison (Time Series)
+```promql
+container_memory_usage_bytes{name=~"optivolt.*"} / 1024 / 1024
+```
+- Utilisation mémoire en MB
+- Détection fuites mémoire
+- Tendances historiques
+
+#### 📊 Stats Individuelles (Gauges)
+- Docker : CPU% actuel + gauge coloré
+- MicroVM : CPU% actuel + gauge coloré
+- Unikernel : CPU% actuel + gauge coloré
+
+#### 📋 Tableau Récapitulatif (Table)
+- Vue d'ensemble tous containers
+- CPU, Mémoire, Status
+- Export CSV possible
+
+### 2. OptiVolt - System Metrics
+
+**Métriques système :**
+- CPU hôte (%)
+- RAM totale/utilisée (GB)
+- Disk I/O (MB/s)
+- Network I/O (MB/s)
+- Nombre containers actifs
+
+---
+
+## 🔍 Requêtes Prometheus Utiles
+
+### Accès à Prometheus
+
+**Codespaces :** Port 9090 → 🌐  
+**Local :** `http://localhost:9090`
+
+### Top Requêtes PromQL
+
+#### 1. CPU par Container
+```promql
+rate(container_cpu_usage_seconds_total{name=~"optivolt.*"}[1m]) * 100
+```
+
+#### 2. Mémoire par Container (MB)
+```promql
+container_memory_usage_bytes{name=~"optivolt.*"} / 1024 / 1024
+```
+
+#### 3. CPU Moyen sur 5 minutes
+```promql
+avg by (name) (rate(container_cpu_usage_seconds_total{name=~"optivolt.*"}[5m])) * 100
+```
+
+#### 4. Top 5 Containers CPU
+```promql
+topk(5, rate(container_cpu_usage_seconds_total[1m]) * 100)
+```
+
+#### 5. Mémoire Totale Utilisée
+```promql
+sum(container_memory_usage_bytes{name=~"optivolt.*"}) / 1024 / 1024 / 1024
+```
+
+#### 6. Network I/O
+```promql
+rate(container_network_receive_bytes_total{name=~"optivolt.*"}[1m]) / 1024
+```
+
+---
+
+## 🛠️ Configuration des Dashboards
+
+### Créer un Dashboard Personnalisé
+
+1. **Menu** → **Dashboards** → **New** → **New Dashboard**
+2. **Add visualization**
+3. **Data source** : Prometheus
+4. Entrer une requête PromQL
+5. Personnaliser l'affichage (Graph, Stat, Table, etc.)
+6. **Save dashboard**
+
+### Modifier un Panel Existant
+
+1. Ouvrir le dashboard
+2. **Titre du panel** → **Edit**
+3. Modifier :
+   - Requête PromQL
+   - Visualisation
+   - Couleurs/Seuils
+   - Légendes
+4. **Apply**
+
+### Importer un Dashboard
+
+1. **Menu** → **Dashboards** → **Import**
+2. Entrer l'ID du dashboard (ex: 14282 pour cAdvisor)
+3. **Load**
+4. Sélectionner **Prometheus** comme datasource
+5. **Import**
+
+**Dashboards Recommandés :**
+- **893** - Docker Container & Host Metrics
+- **14282** - cadvisor exporter
+- **1860** - Node Exporter Full
+
+---
+
+## 🔧 Configuration Avancée
+
+### Prometheus Configuration
+
+Fichier : `monitoring/prometheus/prometheus.yml`
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+```
+
+### Grafana Datasource
+
+```json
+{
+  "name": "Prometheus",
+  "type": "prometheus",
+  "url": "http://prometheus:9090",
+  "access": "proxy",
+  "isDefault": true
+}
+```
+
+### Auto-Setup des Dashboards
+
+```bash
+# Reconfigurer tous les dashboards
+bash scripts/setup_grafana_dashboards.sh
+```
+
+Ce script :
+- ✅ Vérifie Grafana actif
+- ✅ Configure datasource Prometheus
+- ✅ Crée les 2 dashboards OptiVolt
+- ✅ Fournit instructions d'accès
+
+---
+
+## 📈 Alertes (Optionnel)
+
+### Créer une Alerte
+
+1. Ouvrir un panel
+2. **Alert** → **Create alert rule**
+3. Définir la condition :
+   ```promql
+   rate(container_cpu_usage_seconds_total[1m]) * 100 > 80
+   ```
+4. Configurer notification (email, Slack, etc.)
+5. **Save**
+
+### Alertes Recommandées
+
+| Alerte | Condition | Seuil |
+|--------|-----------|-------|
+| CPU High | `cpu_usage > 80%` | 80% |
+| Memory High | `memory > 90%` | 90% |
+| Container Down | `up == 0` | 0 |
+| Disk Full | `disk_usage > 85%` | 85% |
+
+---
+
+## 🐛 Dépannage
+
+### Problème : Grafana ne démarre pas
+
+```bash
+# Voir les logs
+docker logs optivolt-grafana -f
+
+# Redémarrer
+docker restart optivolt-grafana
+
+# Recréer
+docker-compose -f docker-compose-monitoring.yml down
+bash start-monitoring.sh
+```
+
+### Problème : Pas de données dans les dashboards
+
+```bash
+# Vérifier Prometheus
+curl http://localhost:9090/-/healthy
+
+# Vérifier les targets Prometheus
+curl http://localhost:9090/api/v1/targets | jq
+
+# Relancer un benchmark
+bash scripts/run_real_benchmark.sh 30
+```
+
+### Problème : Datasource Prometheus introuvable
+
+```bash
+# Reconfigurer via script
+bash scripts/setup_grafana_dashboards.sh
+
+# OU manuellement :
+# Grafana → Configuration → Data Sources → Add Prometheus
+# URL: http://prometheus:9090
+```
+
+### Problème : Dashboard vide après benchmark
+
+**Solutions :**
+1. Ajuster **Time Range** à "Last 5 minutes"
+2. Activer **Auto-refresh** (10s ou 30s)
+3. Vérifier que les containers `optivolt-*` tournent
+4. Relancer un benchmark pour générer des données
+
+---
+
+## 📚 Ressources
+
+### Documentation Officielle
+
+- [Grafana Docs](https://grafana.com/docs/)
+- [Prometheus Docs](https://prometheus.io/docs/)
+- [cAdvisor Docs](https://github.com/google/cadvisor)
+- [Node Exporter Docs](https://github.com/prometheus/node_exporter)
+
+### Guides OptiVolt
+
+- [../README.md](../README.md) - Documentation principale
+- [../GRAFANA_CODESPACES_ACCESS.md](../GRAFANA_CODESPACES_ACCESS.md) - Accès détaillé
+- [../GUIDE_TESTS_REELS.md](../GUIDE_TESTS_REELS.md) - Benchmarks et tests
+
+---
+
+## ✅ Checklist
+
+- [ ] Stack monitoring démarrée
+- [ ] Grafana accessible (port 3000)
+- [ ] Login admin/optivolt2025 réussi
+- [ ] Datasource Prometheus configuré
+- [ ] Dashboards OptiVolt visibles
+- [ ] Benchmark exécuté (données générées)
+- [ ] Métriques affichées dans dashboards
+- [ ] Auto-refresh activé
+
+---
+
+**📊 Monitoring OptiVolt configuré avec succès !**
+
+Vos métriques de performance sont maintenant visualisées en temps réel dans Grafana.
+
+**Prochaine étape :** Exécuter `bash scripts/run_real_benchmark.sh 60` et observer les dashboards s'animer !
+
 - Graphique en temps réel
 - Mise à jour toutes les 10 secondes
 

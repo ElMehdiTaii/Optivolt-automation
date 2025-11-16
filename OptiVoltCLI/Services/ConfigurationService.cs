@@ -22,10 +22,34 @@ namespace OptiVoltCLI.Services
         /// <param name="logger">Logger instance. If null, creates a default console logger.</param>
         public ConfigurationService(string? configPath = null, ILogger? logger = null)
         {
-            _configPath = configPath ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "optivolt-automation", "config", "hosts.json"
-            );
+            if (configPath == null)
+            {
+                // Try multiple possible paths
+                var possiblePaths = new[]
+                {
+                    Path.Combine(Directory.GetCurrentDirectory(), "config", "hosts.json"),
+                    Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "config", "hosts.json"),
+                    Path.Combine("/workspaces", "Optivolt-automation", "config", "hosts.json"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "optivolt-automation", "config", "hosts.json")
+                };
+
+                foreach (var path in possiblePaths)
+                {
+                    var normalizedPath = Path.GetFullPath(path);
+                    if (File.Exists(normalizedPath))
+                    {
+                        _configPath = normalizedPath;
+                        break;
+                    }
+                }
+
+                _configPath ??= possiblePaths[0]; // Fallback to first path
+            }
+            else
+            {
+                _configPath = configPath;
+            }
+            
             _logger = logger ?? new ConsoleLogger(LogLevel.Info, includeTimestamp: false);
         }
 

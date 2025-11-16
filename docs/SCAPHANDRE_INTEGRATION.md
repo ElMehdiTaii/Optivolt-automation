@@ -1,83 +1,41 @@
-# 📖 Guide d'Intégration Scaphandre dans OptiVolt
+# ⚡ Monitoring Énergétique avec Scaphandre
 
 ## 🎯 Qu'est-ce que Scaphandre ?
 
-**Scaphandre** est un agent de métrologie open-source dédié à la mesure de la **consommation électrique réelle** (en Watts) de vos services informatiques. Il utilise les compteurs matériels Intel RAPL (Running Average Power Limit) pour fournir des mesures précises de l'énergie consommée.
+**Scaphandre** est un outil open-source de métrologie énergétique qui mesure la **consommation électrique réelle** (en Watts) de vos services informatiques. Il utilise les compteurs matériels Intel RAPL (Running Average Power Limit).
 
-### Pourquoi l'intégrer dans OptiVolt ?
+**📊 Intégration OptiVolt :**
+- ✅ Mesurer la consommation énergétique réelle
+- ✅ Comparer l'efficacité énergétique (Docker vs MicroVM vs Unikernel)
+- ✅ Identifier les processus énergivores
+- ✅ Décisions basées sur données énergétiques réelles
 
-OptiVolt compare différents environnements de virtualisation (Docker, MicroVM, Unikernel). Scaphandre permet de :
-- ✅ Mesurer la **consommation énergétique réelle** en Watts
-- ✅ Comparer l'**efficacité énergétique** entre environnements
-- ✅ Identifier les **processus les plus énergivores**
-- ✅ Prendre des **décisions basées sur des données réelles** d'énergie
+**⚠️ Limitation GitHub Codespaces :** RAPL n'est pas accessible dans les environnements virtualisés (Codespaces, VirtualBox). Scaphandre fonctionne uniquement sur du **bare-metal avec processeurs Intel récents**.
 
 ---
 
-## 🚀 Installation Rapide
+## 🚀 Installation (Bare-Metal uniquement)
 
-### Option 1 : Via le script automatique (Recommandé)
-
-```bash
-cd /home/ubuntu/optivolt-automation
-./scripts/setup_scaphandre.sh install
-```
-
-### Option 2 : Via OptiVolt CLI
+### Option 1 : Binaire Précompilé (Recommandé)
 
 ```bash
-cd OptiVoltCLI
-dotnet run -- scaphandre install
-```
-
-### Option 3 : Installation manuelle
-
-```bash
-# Télécharger le binaire
+# Télécharger
 wget https://github.com/hubblo-org/scaphandre/releases/download/v1.0.0/scaphandre-v1.0.0-x86_64-unknown-linux-gnu.tar.gz
 
-# Extraire et installer
+# Extraire
 tar -xzf scaphandre-v1.0.0-x86_64-unknown-linux-gnu.tar.gz
+
+# Installer
 sudo mv scaphandre /usr/local/bin/
 sudo chmod +x /usr/local/bin/scaphandre
 
-# Charger le module RAPL
-sudo modprobe intel_rapl_common  # ou intel_rapl pour kernels < 5
+# Charger module RAPL
+sudo modprobe intel_rapl_common  # Kernel >= 5.0
+# OU
+sudo modprobe intel_rapl          # Kernel < 5.0
 ```
 
----
-
-## 🔍 Vérification de l'Installation
-
-```bash
-# Via le script
-./scripts/setup_scaphandre.sh check
-
-# Via OptiVolt CLI
-dotnet run -- scaphandre check
-
-# Manuellement
-scaphandre --version
-scaphandre stdout -t 5  # Test de 5 secondes
-```
-
----
-
-## 📊 Utilisation de Scaphandre
-
-### 1. Collecte Simple (stdout)
-
-Affiche la consommation dans le terminal :
-
-```bash
-scaphandre stdout -t 15
-```
-
-**Sortie exemple :**
-```
-Host:   9.39 W    Core    Uncore    DRAM
-Socket0 9.39 W    1.50 W
-Top 5 consumers:
+### Option 2 : Docker (Alternative)
 Power    PID    Exe
 4.81 W   642    "/usr/sbin/dockerd"
 4.81 W   703    "/usr/bin/docker-containerd"
@@ -120,76 +78,260 @@ Expose les métriques sur un endpoint HTTP :
 # Via le script
 ./scripts/setup_scaphandre.sh prometheus 8080
 
-# Manuellement
-scaphandre prometheus --port 8080
-```
-
-Accès aux métriques :
 ```bash
-curl http://localhost:8080/metrics
-```
-
-### 4. Mode Docker
-
-```bash
-# Via le script
-./scripts/setup_scaphandre.sh docker
-
-# Manuellement
-docker run --rm \
+# Lancer Scaphandre dans Docker
+docker run -d --name scaphandre \
   -v /sys/class/powercap:/sys/class/powercap:ro \
   -v /proc:/proc:ro \
   -p 8080:8080 \
   hubblo/scaphandre prometheus
 ```
 
+**⚠️ Note :** Docker nécessite également l'accès aux compteurs RAPL sur l'hôte.
+
 ---
 
-## 🔧 Intégration dans OptiVolt
+## 🔍 Vérification
 
-### A. Via OptiVolt CLI
-
-Le CLI inclut maintenant des commandes Scaphandre :
+### Test Basique
 
 ```bash
-cd OptiVoltCLI
+# Vérifier la version
+scaphandre --version
 
-# Installation
-dotnet run -- scaphandre install
-
-# Vérification
-dotnet run -- scaphandre check
-
-# Collecte de métriques
-dotnet run -- scaphandre collect --duration 60 --output ../results/power.json
+# Test de 5 secondes (stdout)
+scaphandre stdout -t 5
 ```
 
-### B. Via les Scripts de Collecte
+**Sortie attendue (bare-metal) :**
+```
+Host:   12.5 W    Core    Uncore    DRAM
+Socket0 12.5 W    8.2 W   2.1 W     2.2 W
 
-Le script `collect_metrics.sh` intègre automatiquement Scaphandre :
+Top 5 consumers:
+PID     Name          Power (W)
+1234    firefox       3.5
+5678    chrome        2.8
+9012    vscode        1.2
+```
+
+**Sortie dans Codespaces/VM :**
+```
+Error: Cannot access RAPL counters
+RAPL requires bare-metal with Intel CPU
+```
+
+---
+
+## 📊 Utilisation dans OptiVolt
+
+### 1. Mode Prometheus (Recommandé)
 
 ```bash
-./scripts/collect_metrics.sh docker 30 results/docker_metrics.json
+# Lancer Scaphandre en mode Prometheus
+scaphandre prometheus --port 8080
+
+# Vérifier les métriques
+curl http://localhost:8080/metrics | grep scaph_host_power_microwatts
 ```
 
-Le JSON généré inclut désormais une section `energy_metrics` avec Scaphandre :
+**Métriques exposées :**
+- `scaph_host_power_microwatts` - Consommation hôte totale
+- `scaph_socket_power_microwatts` - Par socket CPU
+- `scaph_process_power_consumption_microwatts` - Par processus
 
-```json
-{
-  "metadata": { ... },
-  "system_metrics": { ... },
-  "energy_metrics": {
-    "note": "Real power consumption measured by Scaphandre",
-    "scaphandre": {
-      "available": true,
-      "host_power_watts": 12.5,
-      "socket_power_watts": 10.2,
-      "top_consumers": [...]
-    }
-  },
-  "container_metrics": { ... }
-}
+### 2. Intégration avec Prometheus
+
+Éditer `monitoring/prometheus/prometheus.yml` :
+
+```yaml
+scrape_configs:
+  - job_name: 'scaphandre'
+    static_configs:
+      - targets: ['localhost:8080']
+    scrape_interval: 15s
 ```
+
+Redémarrer Prometheus :
+```bash
+docker restart optivolt-prometheus
+```
+
+### 3. Visualisation dans Grafana
+
+**Requêtes PromQL utiles :**
+
+```promql
+# Consommation totale (Watts)
+scaph_host_power_microwatts / 1000000
+
+# Consommation par socket
+scaph_socket_power_microwatts / 1000000
+
+# Top 5 processus énergivores
+topk(5, scaph_process_power_consumption_microwatts / 1000000)
+```
+
+**Créer un panel :**
+1. Grafana → Dashboards → New Panel
+2. Data source : Prometheus
+3. Query : `scaph_host_power_microwatts / 1000000`
+4. Title : "Power Consumption (W)"
+5. Save
+
+---
+
+## 🧪 Tests de Benchmark Énergétique
+
+### Benchmark Simple
+
+```bash
+# Test Docker (30 secondes avec monitoring énergie)
+scaphandre stdout -t 30 &
+SCAPH_PID=$!
+
+# Lancer workload
+docker run --rm stress --cpu 4 --timeout 30s
+
+# Arrêter Scaphandre
+kill $SCAPH_PID
+```
+
+### Comparaison Environnements
+
+```bash
+# 1. Mesurer Docker
+echo "=== Docker ===" > power_comparison.txt
+scaphandre stdout -t 60 >> power_comparison.txt &
+bash scripts/deploy_docker.sh
+bash scripts/run_test_cpu.sh docker 60
+sleep 5
+
+# 2. Mesurer MicroVM
+echo "=== MicroVM ===" >> power_comparison.txt
+scaphandre stdout -t 60 >> power_comparison.txt &
+bash scripts/deploy_microvm.sh
+bash scripts/run_test_cpu.sh microvm 60
+sleep 5
+
+# Analyser
+cat power_comparison.txt
+```
+
+---
+
+## 📈 Interprétation des Résultats
+
+### Exemple de Métriques
+
+| Environment | CPU (W) | RAM (W) | Total (W) | Efficacité |
+|-------------|---------|---------|-----------|------------|
+| Docker      | 8.5     | 2.1     | 12.3      | Baseline   |
+| MicroVM     | 6.8     | 1.5     | 9.2       | +25%       |
+| Unikernel   | 5.2     | 0.9     | 7.1       | +42%       |
+
+**✅ Meilleure efficacité = Consommation plus faible pour même workload**
+
+---
+
+## 🐛 Dépannage
+
+### Problème : "Cannot access RAPL"
+
+**Cause :** Environnement virtualisé (Codespaces, VirtualBox, VMware)
+
+**Solution :**
+```
+❌ Scaphandre ne fonctionne PAS dans:
+   - GitHub Codespaces
+   - VirtualBox
+   - VMware
+   - AWS EC2 (sauf bare-metal)
+
+✅ Scaphandre fonctionne sur:
+   - Machines physiques Intel
+   - Serveurs bare-metal
+   - Certains cloud providers bare-metal (OVH, Hetzner)
+```
+
+### Problème : "Module intel_rapl not found"
+
+```bash
+# Vérifier les modules disponibles
+ls /sys/class/powercap/
+
+# Charger le bon module
+sudo modprobe intel_rapl_common  # Kernel >= 5.0
+# OU
+sudo modprobe intel_rapl          # Kernel < 5.0
+
+# Rendre permanent
+echo "intel_rapl_common" | sudo tee -a /etc/modules
+```
+
+### Problème : "Permission denied /sys/class/powercap"
+
+```bash
+# Donner permissions (temporaire)
+sudo chmod -R a+r /sys/class/powercap
+
+# OU lancer avec sudo
+sudo scaphandre prometheus --port 8080
+```
+
+---
+
+## 🌐 Alternative pour Codespaces
+
+**Dans GitHub Codespaces,** utilisez les métriques CPU/RAM comme proxy d'efficacité énergétique :
+
+```promql
+# "Efficacité énergétique estimée" basée sur CPU
+(
+  rate(container_cpu_usage_seconds_total{name="optivolt-docker"}[1m]) * 100
+) / (
+  rate(container_cpu_usage_seconds_total{name="optivolt-microvm"}[1m]) * 100
+)
+```
+
+**Principe :** Moins de CPU utilisé = Moins d'énergie consommée (approximation)
+
+---
+
+## 📚 Ressources
+
+### Documentation Officielle
+
+- [Scaphandre GitHub](https://github.com/hubblo-org/scaphandre)
+- [Scaphandre Documentation](https://hubblo-org.github.io/scaphandre-documentation/)
+- [Intel RAPL](https://www.intel.com/content/www/us/en/developer/articles/technical/software-security-guidance/advisory-guidance/running-average-power-limit-energy-reporting.html)
+
+### Guides OptiVolt
+
+- [../README.md](../README.md) - Documentation principale
+- [GRAFANA_INTEGRATION.md](GRAFANA_INTEGRATION.md) - Visualisation métriques
+- [../GUIDE_TESTS_REELS.md](../GUIDE_TESTS_REELS.md) - Benchmarks
+
+---
+
+## ✅ Récapitulatif
+
+| Aspect | GitHub Codespaces | Bare-Metal |
+|--------|-------------------|------------|
+| **RAPL disponible** | ❌ Non | ✅ Oui |
+| **Scaphandre fonctionne** | ❌ Non | ✅ Oui |
+| **Alternative** | ✅ Métriques CPU/RAM | - |
+| **Benchmarks** | ✅ Performance | ✅ Performance + Énergie |
+
+---
+
+**⚡ Monitoring énergétique configuré !**
+
+Pour bare-metal, Scaphandre fournit des métriques énergétiques précises.  
+Pour Codespaces, utilisez les métriques CPU/RAM comme indicateurs d'efficacité.
+
+**Prochaine étape :** Consulter [GRAFANA_INTEGRATION.md](GRAFANA_INTEGRATION.md) pour visualiser les données.
+
 
 ### C. Via GitLab CI/CD
 

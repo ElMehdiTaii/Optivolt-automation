@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # Container Docker Standard - Simulation Charge CPU Standard
+  # ==============================================================================
+  optivolt-docker:
+    image: python:3.11-slim
+    container_name: optivolt-docker
+    command:
+      - bash
+      - -c
+      - |
+        echo '🐳 [DOCKER] Container OptiVolt Docker démarré'
+        echo '[DOCKER] Génération charge CPU standard...'
+        python3 -c '
+        import time
+        import math
+        import random
+        print("[DOCKER] Boucle infinie - Charge CPU standard")
+        iteration = 0
+        while True:
+            for _ in range(50000):
+                result = math.sqrt(random.randint(1, 1000000))
+                _ = result * result
+            iteration += 1
+            if iteration % 100 == 0:
+                print(f"[DOCKER] {iteration} itérations effectuées")
+            time.sleep(0.1)
+        '
+    restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 256m
+    labels:
+      - "com.optivolt.environment=docker"
+      - "com.optivolt.type=standard"
+    networks:
+      - optivolt-net
+
+  # ==============================================================================
+  # Container MicroVM - Simulation Charge CPU Optimisée (léger)
+  # ==============================================================================
+  optivolt-microvm:
+    image: python:3.11-alpine
+    container_name: optivolt-microvm
+    command:
+      - sh
+      - -c
+      - |
+        echo '⚡ [MICROVM] Container OptiVolt MicroVM démarré'
+        echo '[MICROVM] Génération charge CPU optimisée...'
+        python3 -c '
+        import time
+        import random
+        print("[MICROVM] Boucle infinie - Charge CPU optimisée")
+        iteration = 0
+        while True:
+            for _ in range(30000):
+                result = random.randint(1, 100000) ** 2
+            iteration += 1
+            if iteration % 100 == 0:
+                print(f"[MICROVM] {iteration} itérations effectuées")
+            time.sleep(0.15)
+        '
+    restart: unless-stopped
+    cpus: "0.5"
+    mem_limit: 128m
+    labels:
+      - "com.optivolt.environment=microvm"
+      - "com.optivolt.type=optimized"
+    networks:
+      - optivolt-net
+
+  # ==============================================================================
+  # Container Unikernel - Simulation Charge CPU Minimale (ultra-léger)
+  # ==============================================================================
+  optivolt-unikernel:
+    image: alpine:latest
+    container_name: optivolt-unikernel
+    command:
+      - sh
+      - -c
+      - |
+        echo '🚀 [UNIKERNEL] Container OptiVolt Unikernel démarré'
+        echo '[UNIKERNEL] Génération charge CPU minimale...'
+        iteration=0
+        while true; do
+          i=0
+          while [ $i -lt 10000 ]; do
+            result=$((i * i))
+            i=$((i + 1))
+          done
+          iteration=$((iteration + 1))
+          if [ $((iteration % 100)) -eq 0 ]; then
+            echo "[UNIKERNEL] $iteration itérations effectuées"
+          fi
+          sleep 0.2
+        done
+    restart: unless-stopped
+    cpus: "0.25"
+    mem_limit: 64m
+    labels:
+      - "com.optivolt.environment=unikernel"
+      - "com.optivolt.type=minimal"
+    networks:
+      - optivolt-net
+
+networks:
+  optivolt-net:
+    name: monitoring_default
+    external: true

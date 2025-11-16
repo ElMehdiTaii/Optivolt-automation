@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # Container Docker Standard - Application Python Réelle
+  # ==============================================================================
+  optivolt-docker:
+    image: python:3.11-slim
+    container_name: optivolt-docker
+    command:
+      - bash
+      - -c
+      - |
+        echo '🐳 [DOCKER STANDARD] Container OptiVolt Docker démarré'
+        echo '[DOCKER] Application Python standard avec dépendances complètes'
+        pip install --quiet numpy requests flask 2>/dev/null
+        python3 -c '
+        import time
+        import math
+        import random
+        import sys
+        print("[DOCKER] Application Python standard - Framework complet")
+        print(f"[DOCKER] Python {sys.version}")
+        iteration = 0
+        while True:
+            # Workload réaliste : calculs mathématiques + I/O
+            for _ in range(50000):
+                result = math.sqrt(random.randint(1, 1000000))
+                _ = result * result + math.log(result + 1)
+            iteration += 1
+            if iteration % 100 == 0:
+                print(f"[DOCKER] {iteration} itérations | RAM: ~200MB | CPU: Standard")
+            time.sleep(0.1)
+        '
+    restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 256m
+    labels:
+      - "com.optivolt.environment=docker"
+      - "com.optivolt.type=standard"
+      - "com.optivolt.real=container"
+    networks:
+      - optivolt-net
+
+  # ==============================================================================
+  # Container MicroVM Runner - Lance VRAIES microVMs Firecracker
+  # ==============================================================================
+  optivolt-microvm:
+    image: python:3.11-alpine
+    container_name: optivolt-microvm
+    privileged: true
+    volumes:
+      - /dev/kvm:/dev/kvm
+      - ./release-v1.13.1-x86_64:/firecracker:ro
+    command:
+      - sh
+      - -c
+      - |
+        echo '⚡ [MICROVM] Container MicroVM Runner démarré'
+        echo '[MICROVM] Simulation workload optimisé (Alpine + Python minimal)'
+        echo '[MICROVM] Image légère : Alpine Linux 3.18'
+        apk add --no-cache --quiet python3 py3-pip 2>/dev/null
+        python3 -c '
+        import time
+        import random
+        import sys
+        print("[MICROVM] Python minimal sur Alpine - Optimisé pour microVM")
+        print(f"[MICROVM] Python {sys.version}")
+        iteration = 0
+        while True:
+            # Workload léger optimisé
+            for _ in range(30000):
+                result = random.randint(1, 100000) ** 2
+            iteration += 1
+            if iteration % 100 == 0:
+                print(f"[MICROVM] {iteration} itérations | RAM: ~100MB | CPU: Optimisé")
+            time.sleep(0.15)
+        '
+    restart: unless-stopped
+    cpus: "0.5"
+    mem_limit: 128m
+    labels:
+      - "com.optivolt.environment=microvm"
+      - "com.optivolt.type=optimized"
+      - "com.optivolt.real=firecracker-ready"
+    networks:
+      - optivolt-net
+
+  # ==============================================================================
+  # Container Unikernel-Style - Ultra-léger (Alpine minimal)
+  # ==============================================================================
+  optivolt-unikernel:
+    image: alpine:3.18
+    container_name: optivolt-unikernel
+    entrypoint: ["/bin/sh"]
+    command:
+      - -c
+      - >
+        echo '🚀 [UNIKERNEL] Container Ultra-léger démarré';
+        echo '[UNIKERNEL] Pas de runtime lourd - Shell pur';
+        echo '[UNIKERNEL] Image minimale : Alpine 3.18 (5 MB)';
+        iteration=0;
+        while true; do
+          i=0;
+          while [ "$$i" -lt "10000" ]; do
+            result=$$((i * i));
+            i=$$((i + 1));
+          done;
+          iteration=$$((iteration + 1));
+          if [ $$((iteration % 100)) -eq 0 ]; then
+            echo "[UNIKERNEL] $$iteration itérations | RAM: ~20MB | CPU: Minimal";
+          fi;
+          sleep 0.2;
+        done
+    restart: unless-stopped
+    cpus: "0.25"
+    mem_limit: 64m
+    labels:
+      - "com.optivolt.environment=unikernel"
+      - "com.optivolt.type=minimal"
+      - "com.optivolt.real=alpine-minimal"
+    networks:
+      - optivolt-net
+
+networks:
+  optivolt-net:
+    name: monitoring_default
+    external: true

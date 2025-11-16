@@ -1,83 +1,256 @@
-# Intégration API FastAPI avec OptiVolt
+# 🌐 Intégration API FastAPI avec OptiVolt
 
-## Vue d'ensemble
+## 📖 Vue d'ensemble
 
-L'API FastAPI (`greenapps/apps/web_api`) est maintenant intégrée au système de benchmarking OptiVolt pour mesurer les performances entre Docker et Unikernel.
+L'API FastAPI est intégrée au système de benchmarking OptiVolt pour mesurer les performances applicatives réelles entre Docker, MicroVM et Unikernel.
 
-## Architecture
+**🎯 Objectif :** Comparer les performances d'une API REST sur différents environnements de virtualisation.
+
+---
+
+## 🏗️ Architecture
 
 ```
-greenapps/apps/web_api/
-├── app/
-│   ├── app.py              # Application FastAPI principale
-│   ├── routes/
-│   │   └── simulation_routes.py  # Endpoints de simulation
-│   └── helpers.py          # Fonctions utilitaires
-├── Dockerfile              # Image Docker de l'API ✨ NOUVEAU
-└── pyproject.toml          # Dépendances Python
-
 scripts/
-├── deploy_fastapi.sh       # Déploiement de l'API dans Docker ✨ NOUVEAU
-├── benchmark_api.sh        # Script de benchmark complet ✨ NOUVEAU
-└── run_test_api.sh         # Intégration avec OptiVoltCLI (modifié)
+├── deploy_fastapi.sh       # Déploiement API dans Docker
+├── deploy_web_api.sh        # Alternative de déploiement
+├── benchmark_api.sh         # Script de benchmark API
+└── run_test_api.sh          # Tests OptiVoltCLI
+
+OptiVoltCLI/
+└── Commands/
+    └── TestCommand.cs       # Intégration tests API
 ```
 
-## Endpoints disponibles
+---
+
+## 🚀 Endpoints Disponibles
 
 ### GET Endpoints
-- `GET /` - Message de bienvenue
-- `GET /simulate/normal` - Réponse GET normale
-- `GET /simulate/heavy?size_kb=500` - Réponse avec payload lourd
-- `GET /simulate/delay?ms=500` - Réponse avec délai simulé
+
+| Endpoint | Description | Paramètres |
+|----------|-------------|------------|
+| `GET /` | Message de bienvenue | - |
+| `GET /simulate/normal` | Réponse GET standard | - |
+| `GET /simulate/heavy` | Réponse avec payload lourd | `size_kb=500` |
+| `GET /simulate/delay` | Réponse avec délai artificiel | `ms=500` |
 
 ### POST Endpoints
-- `POST /simulate/normal` - POST avec payload simple
-  ```json
-  {"content": "test data"}
-  ```
-- `POST /simulate/heavy` - POST avec payload lourd
-  ```json
-  {"size_kb": 100}
-  ```
-- `POST /simulate/delay` - POST avec délai simulé
-  ```json
-  {"content": "test", "ms": 500}
-  ```
 
-## Utilisation
+| Endpoint | Description | Body |
+|----------|-------------|------|
+| `POST /simulate/normal` | POST standard | `{"content": "data"}` |
+| `POST /simulate/heavy` | POST avec charge | `{"size_kb": 100}` |
+| `POST /simulate/delay` | POST avec délai | `{"ms": 500, "content": "data"}` |
 
-### 1. Déploiement manuel de l'API
+---
+
+## 💻 Utilisation
+
+### 1. Déploiement de l'API
 
 ```bash
 # Déployer l'API dans Docker
-./scripts/deploy_fastapi.sh
+cd /workspaces/Optivolt-automation
+bash scripts/deploy_fastapi.sh
 ```
 
-L'API sera accessible sur `http://localhost:8000`
+**Résultat :**
+- Container `optivolt-fastapi` créé
+- API accessible sur `http://localhost:8000`
+- Documentation Swagger : `http://localhost:8000/docs`
 
-Documentation interactive : `http://localhost:8000/docs`
+### 2. Test Manuel de l'API
 
-### 2. Test manuel avec le script de benchmark
+```bash
+# Requête GET simple
+curl http://localhost:8000/simulate/normal
+
+# Requête GET lourde (500 KB)
+curl http://localhost:8000/simulate/heavy?size_kb=500
+
+# Requête GET avec délai (500ms)
+curl http://localhost:8000/simulate/delay?ms=500
+
+# Requête POST
+curl -X POST http://localhost:8000/simulate/normal \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Test data"}'
+```
+
+### 3. Benchmark avec Script
 
 ```bash
 # Benchmark de 60 secondes
-./scripts/benchmark_api.sh 60 http://localhost:8000
+bash scripts/benchmark_api.sh 60 http://localhost:8000
+
+# Benchmark avec plus de requêtes
+bash scripts/benchmark_api.sh 120 http://localhost:8000
 ```
 
 **Métriques collectées :**
-- Nombre total de requêtes
-- Requêtes/seconde (throughput)
-- Latence moyenne/min/max
-- Taux de succès
-- Détail par endpoint
+- 📊 Nombre total de requêtes
+- ⚡ Requêtes/seconde (throughput)
+- ⏱️ Latence moyenne/min/max (ms)
+- ✅ Taux de succès (%)
+- 📈 Détail par endpoint
 
-### 3. Test via OptiVoltCLI (intégration complète)
+### 4. Test via OptiVoltCLI
 
 ```bash
-# Compiler OptiVoltCLI
-cd OptiVoltCLI
-dotnet build -c Release -o ../publish
-cd ..
+cd /workspaces/Optivolt-automation/publish
+
+# Test API Docker (30 secondes)
+./OptiVoltCLI test --environment docker --type api --duration 30
+
+# Test API MicroVM
+./OptiVoltCLI test --environment microvm --type api --duration 30
+
+# Test API Unikernel
+./OptiVoltCLI test --environment unikernel --type api --duration 30
+```
+
+---
+
+## 📊 Résultats de Benchmark
+
+### Format JSON
+
+```json
+{
+  "environment": "docker",
+  "test_type": "api",
+  "duration_seconds": 60,
+  "metrics": {
+    "total_requests": 15420,
+    "requests_per_second": 257,
+    "latency_ms": {
+      "avg": 38.5,
+      "min": 12.1,
+      "max": 156.3
+    },
+    "success_rate": 99.8,
+    "endpoint_breakdown": {
+      "GET /simulate/normal": 5140,
+      "GET /simulate/heavy": 5140,
+      "POST /simulate/normal": 5140
+    }
+  }
+}
+```
+
+### Exemple de Résultats Comparatifs
+
+| Environment | Req/s | Latence Moy. | Success Rate |
+|-------------|-------|--------------|--------------|
+| Docker      | 257   | 38.5 ms      | 99.8%        |
+| MicroVM     | 312   | 31.2 ms      | 99.9%        |
+| Unikernel   | 289   | 34.1 ms      | 99.7%        |
+
+---
+
+## 🔧 Configuration Avancée
+
+### Personnaliser les Tests
+
+Éditer `scripts/benchmark_api.sh` :
+
+```bash
+# Modifier le nombre de workers
+WORKERS=10
+
+# Ajuster les endpoints testés
+ENDPOINTS=(
+  "/simulate/normal"
+  "/simulate/heavy?size_kb=1000"
+  "/simulate/delay?ms=100"
+)
+
+# Changer la distribution des requêtes
+GET_RATIO=0.7
+POST_RATIO=0.3
+```
+
+### Ajouter des Endpoints
+
+Créer une nouvelle API FastAPI :
+
+```python
+# app/routes/custom_routes.py
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/custom/endpoint")
+async def custom_endpoint():
+    return {"message": "Custom response"}
+```
+
+---
+
+## 🐛 Dépannage
+
+### Problème : API ne répond pas
+
+```bash
+# Vérifier le container
+docker ps | grep fastapi
+
+# Voir les logs
+docker logs optivolt-fastapi -f
+
+# Redémarrer
+docker restart optivolt-fastapi
+```
+
+### Problème : Port 8000 déjà utilisé
+
+```bash
+# Trouver le processus
+lsof -i :8000
+
+# Arrêter l'ancien container
+docker stop optivolt-fastapi
+docker rm optivolt-fastapi
+
+# Relancer
+bash scripts/deploy_fastapi.sh
+```
+
+### Problème : Erreurs de connexion
+
+```bash
+# Tester la connectivité
+curl -v http://localhost:8000/
+
+# Vérifier les règles réseau
+docker network inspect bridge
+```
+
+---
+
+## 📚 Ressources
+
+### Documentation
+
+- [FastAPI Official Docs](https://fastapi.tiangolo.com/)
+- [OptiVolt README](../README.md)
+- [Guide Tests Réels](../GUIDE_TESTS_REELS.md)
+
+### Scripts Associés
+
+- `scripts/deploy_fastapi.sh` - Déploiement
+- `scripts/benchmark_api.sh` - Benchmarking
+- `scripts/run_test_api.sh` - Tests intégrés
+
+---
+
+**✅ API Integration Ready!**
+
+L'API FastAPI est maintenant intégrée et prête pour les benchmarks comparatifs.
+
+**Prochaine étape :** Exécuter `bash scripts/run_real_benchmark.sh 60` pour comparer tous les environnements.
+
 
 # Déployer et tester l'API sur Docker
 cd publish

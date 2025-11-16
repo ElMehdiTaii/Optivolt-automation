@@ -1,83 +1,58 @@
-# 🚀 Configuration GitHub Codespaces pour OptivoltCLI
+# 🚀 Configuration GitHub Codespaces pour OptiVolt
 
-## Pourquoi GitHub Codespaces ?
+## 💡 Pourquoi GitHub Codespaces ?
 
-✅ **60 heures/mois GRATUITES** pour tous les comptes GitHub  
-✅ **KVM natif disponible** sur machines 4-core+  
-✅ **Configuration en 10 minutes**  
-✅ **VS Code dans le navigateur** - aucune installation locale  
-✅ **Accès depuis n'importe où** - juste un navigateur  
-✅ **Firecracker + OSv fonctionnent** directement  
+✅ **120 heures/mois GRATUITES** (comptes gratuits) + stockage 15GB  
+✅ **KVM natif disponible** - Support Firecracker et virtualisation  
+✅ **Démarrage < 2 minutes** - Environnement préconfiguré  
+✅ **VS Code dans le navigateur** - Aucune installation locale  
+✅ **Accès universel** - Depuis n'importe quel appareil  
+✅ **Docker préinstallé** - Stack monitoring ready  
+
+**🎯 Parfait pour OptiVolt :** Benchmarks Docker vs MicroVM vs Unikernel avec monitoring temps réel !
 
 ---
 
 ## 📋 Prérequis
 
-- **Compte GitHub** (gratuit) - https://github.com
-- **Navigateur web** moderne (Chrome, Firefox, Edge)
+- **Compte GitHub** (gratuit) → https://github.com/signup
+- **Navigateur moderne** (Chrome, Firefox, Edge, Safari)
 - **Connexion internet** stable
 
 ---
 
-## Étape 1 : Créer/Préparer votre repository GitHub (5 min)
+## 🚀 Étape 1 : Créer un Codespace (2 minutes)
 
-### 1.1 Créer un compte GitHub (si vous n'en avez pas)
+### Si vous avez déjà un repository OptiVolt
 
-1. Aller sur https://github.com/signup
-2. Entrer votre email
-3. Créer un mot de passe
-4. Choisir un nom d'utilisateur
-5. Vérifier votre email
-6. Sélectionner le plan **Free** (gratuit)
+1. Aller sur votre repository : `https://github.com/votre-username/Optivolt-automation`
+2. Cliquer sur le bouton vert **"Code"**
+3. Onglet **"Codespaces"**
+4. Cliquer **"Create codespace on main"**
+5. ☕ Attendre 1-2 minutes (installation automatique)
 
-### 1.2 Créer un nouveau repository
+### Si vous n'avez pas encore de repository
 
-**Option A : Depuis l'interface GitHub**
-
-1. Aller sur https://github.com/new
-2. **Repository name** : `optivolt-automation`
-3. **Description** : `OptivoltCLI - Docker vs MicroVM vs Unikernel benchmarking`
-4. Sélectionner **Public** (pour Codespaces gratuit)
-5. ☑ **Add a README file**
-6. Cliquer sur **"Create repository"**
-
-**Option B : Depuis votre machine locale (VirtualBox)**
-
-```bash
-cd /home/ubuntu/optivolt-automation
-
-# Initialiser Git (si pas déjà fait)
-git init
-
-# Ajouter tous les fichiers
-git add .
-
-# Commit initial
-git commit -m "Initial commit - OptivoltCLI project"
-
-# Ajouter le remote GitHub (remplacer votreusername)
-git remote add origin https://github.com/votreusername/optivolt-automation.git
-
-# Push vers GitHub
-git branch -M main
-git push -u origin main
+**Option A : Fork ce projet**
 ```
-
----
-
-## Étape 2 : Créer un Codespace (2 min)
-
-### 2.1 Ouvrir votre repository sur GitHub
-
+https://github.com/ElMehdiTaii/Optivolt-automation
 ```
-https://github.com/votreusername/optivolt-automation
-```
+→ Cliquer **"Fork"** en haut à droite  
+→ Puis suivre les étapes ci-dessus sur votre fork
 
-### 2.2 Lancer un Codespace
+**Option B : Créer depuis zéro**
 
-**Méthode 1 : Via l'interface GitHub**
-
-1. Sur la page du repository, cliquer sur le bouton vert **"Code"**
+1. Créer un nouveau repository sur GitHub
+2. Cloner votre code existant :
+   ```bash
+   cd /votre/projet/local
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/votre-username/optivolt.git
+   git push -u origin main
+   ```
+3. Créer un Codespace depuis ce repository
 2. Cliquer sur l'onglet **"Codespaces"**
 3. Cliquer sur **"Create codespace on main"**
 4. **Sélectionner la machine** : 
@@ -106,122 +81,261 @@ gh codespace ssh
 
 ---
 
-## Étape 3 : Vérifier KVM dans Codespace (2 min)
+## ⚡ Étape 2 : Premier Démarrage (< 3 minutes)
 
-### 3.1 Ouvrir le terminal
+### 2.1 Ouvrir le Terminal
 
-Dans VS Code (navigateur), ouvrir le terminal :
-- **Menu** : `Terminal` → `New Terminal`
-- **OU raccourci** : `` Ctrl+` `` (backtick)
+Dans VS Code (navigateur) :
+- **Menu** → `Terminal` → `New Terminal`
+- **OU** raccourci : `` Ctrl+` ``
 
-### 3.2 Vérifier KVM
+### 2.2 Vérifier l'Environnement
 
 ```bash
-# Vérifier les flags CPU
-egrep -c '(vmx|svm)' /proc/cpuinfo
-# Doit afficher un nombre > 0
+# Vérifier Docker (préinstallé)
+docker --version
+docker ps
 
-# Installer cpu-checker
-sudo apt update
-sudo apt install -y cpu-checker
+# Vérifier .NET SDK (préinstallé)
+dotnet --version  # Doit afficher 8.0+
 
-# Vérifier KVM
-sudo kvm-ok
+# Vérifier KVM (optionnel pour MicroVM natif)
+lscpu | grep Virtualization
 ```
 
-✅ **Résultat attendu** :
-```
-INFO: /dev/kvm exists
-KVM acceleration can be used
-```
+**✅ Tout est prêt !** Codespaces inclut Docker, .NET, Python, Git.
 
-❌ **Si KVM non disponible** :
+### 2.3 Démarrer le Monitoring
 
-Vérifier la taille de la machine :
 ```bash
-# Afficher les specs
-nproc   # Doit afficher au moins 4
-free -h # RAM disponible
+# Lancer Prometheus + Grafana + cAdvisor
+cd /workspaces/Optivolt-automation
+bash start-monitoring.sh
+
+# Attendre 20 secondes
+sleep 20
+
+# Vérifier les containers
+docker ps | grep optivolt
 ```
 
-**Si < 4 cores** : Recréer le Codespace avec machine 4-core minimum :
-1. Fermer le Codespace actuel
-2. Sur GitHub : `Code` → `Codespaces` → `...` → `Delete`
-3. Recréer avec **4-core** ou **8-core**
+**Résultat attendu :** 4-6 containers actifs (prometheus, grafana, cadvisor, node-exporter)
 
 ---
 
-## Étape 4 : Installer les dépendances (10 min)
-
-### 4.1 Installer Docker
+## 🔨 Étape 3 : Compiler OptiVoltCLI (2 minutes)
 
 ```bash
-# Docker est souvent pré-installé dans Codespaces
-docker --version
+# Compiler le CLI
+cd /workspaces/Optivolt-automation/OptiVoltCLI
+dotnet publish -c Release -o ../publish
 
-# Si pas installé :
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-newgrp docker
+# Vérifier
+cd /workspaces/Optivolt-automation
+./publish/OptiVoltCLI --version
 ```
 
-### 4.2 Installer QEMU/KVM
+---
+
+## 🚀 Étape 4 : Premier Benchmark (1 minute)
 
 ```bash
-sudo apt update
-sudo apt install -y \
-  qemu-kvm \
-  qemu-system-x86 \
-  libvirt-daemon-system \
-  bridge-utils \
-  cpu-checker
+# Lancer un benchmark de 60 secondes
+cd /workspaces/Optivolt-automation
+bash scripts/run_real_benchmark.sh 60
 ```
 
-### 4.3 Installer Python et dépendances
+**Pendant l'exécution :**
+- Métriques collectées en temps réel
+- Résultats dans `results/comparison.json`
+- Dashboards Grafana mis à jour
 
-```bash
-# Python3 et pip
-sudo apt install -y python3 python3-pip
+---
 
-# Dépendances Python du projet
-pip3 install psutil
+## 📊 Étape 5 : Visualiser dans Grafana
+
+### Accès à Grafana
+
+1. **VS Code** → Onglet **PORTS** (panneau bas)
+2. Trouver la ligne **3000** (Grafana)
+3. Cliquer sur l'icône **🌐** (globe)
+4. **Login :** `admin` / `admin`
+
+### Navigation
+
+1. Menu **☰** → **Dashboards** → **Browse**
+2. Sélectionner **"OptiVolt - Docker vs MicroVM vs Unikernel"**
+
+**Vous verrez :**
+- 📈 CPU temps réel par environnement
+- 💾 Mémoire par container
+- 📊 Stats individuelles
+- 📋 Tableau comparatif
+
+📖 **Guide détaillé :** [../GRAFANA_CODESPACES_ACCESS.md](../GRAFANA_CODESPACES_ACCESS.md)
+
+---
+
+## 🔧 Configuration Avancée
+
+### Personnaliser la Configuration
+
+Éditer `config/hosts.json` :
+
+```json
+{
+  "environments": {
+    "docker": {
+      "hostname": "localhost",
+      "port": 22,
+      "username": "codespace",
+      "privateKeyPath": "/home/codespace/.ssh/id_rsa",
+      "workingDirectory": "/workspaces/Optivolt-automation"
+    }
+  }
+}
 ```
 
-### 4.4 Installer .NET 8.0 (pour OptiVoltCLI)
+### Installer des Outils Supplémentaires
 
 ```bash
-# Télécharger et installer .NET
-wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
+# jq pour traiter JSON
+sudo apt install -y jq
+
+# htop pour monitoring système
+sudo apt install -y htop
+
+# Vérifier Firecracker (pour MicroVM natif)
+wget https://github.com/firecracker-microvm/firecracker/releases/download/v1.13.1/firecracker-v1.13.1-x86_64.tgz
+tar -xzf firecracker-v1.13.1-x86_64.tgz
+sudo mv release-v1.13.1-x86_64/firecracker-v1.13.1-x86_64 /usr/local/bin/firecracker
+sudo chmod +x /usr/local/bin/firecracker
+```
+
+---
+
+## 🐛 Dépannage
+
+### Problème : Docker ne démarre pas
+
+```bash
+# Vérifier le service
+sudo systemctl status docker
+
+# Redémarrer si nécessaire
+sudo systemctl restart docker
+```
+
+### Problème : Ports non accessibles
+
+```bash
+# Vérifier que les containers tournent
+docker ps
+
+# Redémarrer le monitoring
+docker-compose -f docker-compose-monitoring.yml down
+bash start-monitoring.sh
+```
+
+### Problème : .NET CLI introuvable
+
+```bash
+# Installer manuellement
+wget https://dot.net/v1/dotnet-install.sh
 chmod +x dotnet-install.sh
 ./dotnet-install.sh --channel 8.0
 
 # Ajouter au PATH
-echo 'export DOTNET_ROOT=$HOME/.dotnet' >> ~/.bashrc
-echo 'export PATH=$PATH:$DOTNET_ROOT:$DOTNET_ROOT/tools' >> ~/.bashrc
+echo 'export PATH=$PATH:$HOME/.dotnet' >> ~/.bashrc
 source ~/.bashrc
+```
 
-# Vérifier
-dotnet --version
+### Problème : Permissions Docker
+
+```bash
+# Ajouter l'utilisateur au groupe docker
+sudo usermod -aG docker $USER
+
+# Recharger les groupes
+newgrp docker
+
+# Tester
+docker ps
 ```
 
 ---
 
-## Étape 5 : Installer Firecracker et OSv (10 min)
+## 💡 Conseils d'Utilisation
 
-### 5.1 Utiliser le script d'installation
+### Sauvegarder vos Changements
 
 ```bash
-cd /workspaces/optivolt-automation
-bash scripts/setup_local_vms.sh
+# Commit réguliers
+git add .
+git commit -m "Update: description des changements"
+git push
 ```
 
-Ce script installe automatiquement :
-- ✅ Firecracker v1.5.0
-- ✅ OSv avec Capstan
-- ✅ Configure `config/hosts.json`
+### Arrêter/Redémarrer un Codespace
 
-### 5.2 Vérifier les installations
+- **Pause automatique :** Après 30 min d'inactivité
+- **Arrêt manuel :** GitHub → Codespaces → `...` → Stop
+- **Redémarrage :** GitHub → Codespaces → Cliquer sur votre Codespace
+
+### Gérer les Ressources
+
+```bash
+# Voir l'utilisation actuelle
+htop
+
+# Nettoyer Docker
+docker system prune -a
+
+# Voir l'espace disque
+df -h
+```
+
+---
+
+## 📚 Ressources
+
+### Documentation Essentielle
+
+| Document | Description |
+|----------|-------------|
+| [../README.md](../README.md) | Documentation principale |
+| [../QUICKSTART_CODESPACES.md](../QUICKSTART_CODESPACES.md) | Démarrage rapide |
+| [../GRAFANA_CODESPACES_ACCESS.md](../GRAFANA_CODESPACES_ACCESS.md) | Guide Grafana complet |
+| [../GUIDE_TESTS_REELS.md](../GUIDE_TESTS_REELS.md) | Tests et benchmarks |
+
+### Liens Externes
+
+- [GitHub Codespaces Docs](https://docs.github.com/en/codespaces)
+- [Docker Docs](https://docs.docker.com/)
+- [Prometheus Docs](https://prometheus.io/docs/)
+- [Grafana Docs](https://grafana.com/docs/)
+
+---
+
+## ✅ Checklist de Configuration
+
+- [ ] Codespace créé et démarré
+- [ ] Docker fonctionnel (`docker ps`)
+- [ ] .NET SDK installé (`dotnet --version`)
+- [ ] Monitoring lancé (`docker ps | grep optivolt`)
+- [ ] OptiVoltCLI compilé (`./publish/OptiVoltCLI --version`)
+- [ ] Premier benchmark exécuté
+- [ ] Grafana accessible (port 3000)
+- [ ] Dashboards visibles
+
+---
+
+**🎉 Configuration Terminée !**
+
+Votre environnement Codespaces est prêt pour les benchmarks OptiVolt.
+
+**Prochaine étape :** Consulter [../QUICKSTART_CODESPACES.md](../QUICKSTART_CODESPACES.md) pour les commandes essentielles.
+
 
 **Firecracker** :
 ```bash

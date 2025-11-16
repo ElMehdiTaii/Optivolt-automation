@@ -1,37 +1,27 @@
 {
-  "hosts": {
+  "environments": {
     "docker": {
       "hostname": "localhost",
-      "ip": "localhost",
-      "user": "root",
-      "port": 2222,
-      "workdir": "/home/ubuntu/optivolt-automation"
+      "port": 22,
+      "username": "codespace",
+      "privateKeyPath": "~/.ssh/id_ed25519",
+      "workingDirectory": "/workspaces/Optivolt-automation"
     },
     "microvm": {
-      "hostname": "microvm-test",
-      "ip": "192.168.1.101",
-      "user": "optivolt",
+      "hostname": "localhost",
       "port": 22,
-      "workdir": "/home/optivolt/optivolt-tests"
+      "username": "codespace",
+      "privateKeyPath": "~/.ssh/id_ed25519",
+      "workingDirectory": "/workspaces/Optivolt-automation",
+      "type": "firecracker"
     },
     "unikernel": {
-      "hostname": "unikernel-test",
-      "ip": "localhost",
-      "user": "optivolt",
-      "port": 2223,
-      "workdir": "/home/optivolt/optivolt-tests"
-    },
-    "localhost": {
       "hostname": "localhost",
-      "ip": "127.0.0.1",
-      "user": "root",
       "port": 22,
-      "workdir": "/home/ubuntu/optivolt-automation"
+      "username": "codespace",
+      "privateKeyPath": "~/.ssh/id_ed25519",
+      "workingDirectory": "/workspaces/Optivolt-automation",
+      "type": "osv"
     }
-  },
-  "scripts": {
-    "docker_deploy": "scripts/deploy_docker.sh",
-    "microvm_deploy": "scripts/deploy_microvm.sh",
-    "unikernel_deploy": "scripts/deploy_unikernel.sh"
   }
 }
